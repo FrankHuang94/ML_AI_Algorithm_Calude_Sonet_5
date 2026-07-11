@@ -11,6 +11,7 @@ Files in this repository define jargon inline on first use with a short parenthe
 ## A
 
 - **Ablation** — an experiment where you remove or disable one component of a system (a layer, a loss term, a training trick) and re-measure performance, to find out how much that component actually contributed. If removing it doesn't hurt performance, it wasn't pulling its weight. Covered in: [scope-and-methodology.md](scope-and-methodology.md).
+- **Attention** — a mechanism that computes relevance scores between a query and a set of candidate items, converts them to weights (typically via softmax), and takes a weighted sum of the candidates; originated in seq2seq translation (Bahdanau/Luong attention) and generalized into Transformer self-attention. Covered in: [rnn-lstm-gru.md](../03-deep-learning-architectures/rnn-lstm-gru.md); see also [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md).
 
 ## B
 
@@ -45,6 +46,7 @@ Files in this repository define jargon inline on first use with a short parenthe
 
 ## H
 
+- **Hidden state** — a vector maintained and updated by a recurrent network at each time step, summarizing everything relevant the network has seen so far in a sequence. Covered in: [rnn-lstm-gru.md](../03-deep-learning-architectures/rnn-lstm-gru.md).
 - **Hessian** — the matrix of second derivatives of a function; describes the local curvature of the loss landscape. Too large (parameters²) to compute directly for deep networks, which is why most training uses only first-derivative (gradient) information. Covered in: [optimization-algorithms.md](../01-foundations/optimization-algorithms.md).
 
 ## I
