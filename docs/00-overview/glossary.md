@@ -38,6 +38,7 @@ Files in this repository define jargon inline on first use with a short parenthe
 ## F
 
 - **Few-shot (learning/prompting)** — giving a model a handful (typically 1-100) of example input/output pairs at inference time (in the prompt, not via weight updates) and expecting it to generalize the pattern to a new input. Contrast with zero-shot. Covered in: [scope-and-methodology.md](scope-and-methodology.md).
+- **FLOPs (floating-point operations)** — a measure of computational cost; used to quantify how much compute a model requires to process a token, train, or run inference. Covered in: [mixture-of-experts.md](../03-deep-learning-architectures/mixture-of-experts.md).
 
 ## G
 
@@ -71,6 +72,7 @@ Files in this repository define jargon inline on first use with a short parenthe
 ## M
 
 - **Markov property** — the assumption that the future depends on the past only through the present state, not the full history; the defining assumption of Markov chains, HMMs, and MDPs. Covered in: [probabilistic-models.md](../02-classical-ml/probabilistic-models.md); see also [value-based-methods.md](../07-reinforcement-learning/value-based-methods.md).
+- **Mixture of Experts (MoE) / router** — an architectural pattern where many parallel sub-networks ("experts") exist, but a small router network selects only a few to process each token, decoupling total parameter count from per-token compute cost. Covered in: [mixture-of-experts.md](../03-deep-learning-architectures/mixture-of-experts.md).
 - **Momentum** — an optimization technique that accumulates a running average of past gradients and steps in that averaged direction rather than the raw current gradient, smoothing the trajectory. Covered in: [optimization-algorithms.md](../01-foundations/optimization-algorithms.md).
 
 ## O
