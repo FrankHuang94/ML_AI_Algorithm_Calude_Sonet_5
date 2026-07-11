@@ -63,13 +63,15 @@ Files in this repository define jargon inline on first use with a short parenthe
 
 ## H
 
+- **Hallucination** — when a model generates fluent, confident-sounding output that is factually incorrect; a consequence of training objectives that optimize for plausibility rather than verified truth. Covered in: [open-problems.md](../09-roadmaps/open-problems.md).
 - **Hidden state** — a vector maintained and updated by a recurrent network at each time step, summarizing everything relevant the network has seen so far in a sequence. Covered in: [rnn-lstm-gru.md](../03-deep-learning-architectures/rnn-lstm-gru.md).
 - **Hessian** — the matrix of second derivatives of a function; describes the local curvature of the loss landscape. Too large (parameters²) to compute directly for deep networks, which is why most training uses only first-derivative (gradient) information. Covered in: [optimization-algorithms.md](../01-foundations/optimization-algorithms.md).
 
 ## I
 
-- **Inductive vs. transductive learning** — inductive models generalize to new, unseen nodes/graphs/examples; transductive models are defined only over the fixed data seen during training and don't naturally extend beyond it. Covered in: [graph-neural-networks.md](../03-deep-learning-architectures/graph-neural-networks.md).
 - **Inductive bias** — a built-in assumption baked into a model architecture (rather than learned from data) that makes certain patterns easier to learn; e.g., convolution's assumption that nearby pixels are related. Covered in: [cnn-family.md](../03-deep-learning-architectures/cnn-family.md).
+- **Inductive vs. transductive learning** — inductive models generalize to new, unseen nodes/graphs/examples; transductive models are defined only over the fixed data seen during training and don't naturally extend beyond it. Covered in: [graph-neural-networks.md](../03-deep-learning-architectures/graph-neural-networks.md).
+- **Interpretability** — the degree to which a model's internal computation and behavior can be explained in human-understandable terms; a major open problem for large neural networks. Covered in: [open-problems.md](../09-roadmaps/open-problems.md).
 
 ## K
 
