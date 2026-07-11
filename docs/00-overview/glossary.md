@@ -16,6 +16,10 @@ Files in this repository define jargon inline on first use with a short parenthe
 
 - **Benchmark** — a standardized dataset/task pair (plus a scoring rule) used to compare models against each other under identical conditions. "SOTA on benchmark X" means "best published score on that specific standardized test," which is narrower than "best model overall." Covered in: [scope-and-methodology.md](scope-and-methodology.md).
 
+## C
+
+- **Calibration** — how well a model's stated confidence (predicted probability) matches its actual empirical accuracy. A well-calibrated model that says "80% confident" is right about 80% of the time. Covered in: [regularization-techniques.md](../01-foundations/regularization-techniques.md).
+
 ## F
 
 - **Few-shot (learning/prompting)** — giving a model a handful (typically 1-100) of example input/output pairs at inference time (in the prompt, not via weight updates) and expecting it to generalize the pattern to a new input. Contrast with zero-shot. Covered in: [scope-and-methodology.md](scope-and-methodology.md).
@@ -35,6 +39,7 @@ Files in this repository define jargon inline on first use with a short parenthe
 ## L
 
 - **Learning rate (η)** — the scalar step size controlling how far a single optimization step moves the parameters along the (negative) gradient direction. Covered in: [optimization-algorithms.md](../01-foundations/optimization-algorithms.md).
+- **Logits** — the raw, unnormalized scores a classifier produces before they're converted into probabilities (typically via softmax). Covered in: [loss-functions.md](../01-foundations/loss-functions.md).
 - **Loss landscape** — the high-dimensional surface formed by plotting the loss function's value against every possible setting of the model's parameters; training is the process of finding a low point on this surface. Covered in: [optimization-algorithms.md](../01-foundations/optimization-algorithms.md).
 
 ## M
