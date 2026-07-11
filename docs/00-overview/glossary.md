@@ -101,6 +101,8 @@ Files in this repository define jargon inline on first use with a short parenthe
 
 - **Query, Key, Value (Q/K/V)** — the three learned projections of each position's input in self-attention: the query represents what a position is looking for, the key represents what a position advertises, and the value represents the information a position offers if attended to. Covered in: [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md).
 
+- **Quantization** — reducing the numerical precision used to represent model weights/activations (e.g., from 16-bit to 4-bit), shrinking memory footprint and often speeding up inference at some accuracy cost. Covered in: [quantization.md](../06-inference-optimization/quantization.md).
+
 ## R
 
 - **Receptive field** — the region of the original input that a given neuron's output is effectively influenced by; grows larger in deeper layers of a CNN. Covered in: [cnn-family.md](../03-deep-learning-architectures/cnn-family.md).
