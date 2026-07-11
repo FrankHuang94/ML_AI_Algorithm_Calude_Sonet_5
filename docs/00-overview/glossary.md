@@ -129,6 +129,7 @@ Files in this repository define jargon inline on first use with a short parenthe
 - **Sharding** — splitting a large object (model parameters, gradients, optimizer state) into pieces distributed across multiple devices, so no single device needs to hold the whole thing. Covered in: [distributed-training.md](../05-training-methodology/distributed-training.md).
 - **Softmax** — a function converting a vector of raw scores (logits) into a valid probability distribution (all positive, summing to 1) by exponentiating and normalizing. Covered in: [loss-functions.md](../01-foundations/loss-functions.md).
 - **SOTA (State of the Art)** — the best publicly reported result on a given benchmark at a given point in time. A moving target, not a fixed method — "SOTA" describes a leaderboard position, not any one algorithm. Covered in: [scope-and-methodology.md](scope-and-methodology.md).
+- **Sparse reward** — an RL setting where feedback is only available at the end of a long sequence of actions (e.g., only when a full LLM response is complete) rather than continuously, making credit assignment harder. Covered in: [rl-for-llms.md](../07-reinforcement-learning/rl-for-llms.md).
 - **Sparsity** — the fraction of a network's weights that are zero (or removed); pruning increases sparsity to reduce model size. Covered in: [pruning-and-distillation.md](../06-inference-optimization/pruning-and-distillation.md).
 
 ## T
