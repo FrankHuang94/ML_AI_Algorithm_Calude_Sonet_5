@@ -12,6 +12,7 @@ Files in this repository define jargon inline on first use with a short parenthe
 
 - **Ablation** — an experiment where you remove or disable one component of a system (a layer, a loss term, a training trick) and re-measure performance, to find out how much that component actually contributed. If removing it doesn't hurt performance, it wasn't pulling its weight. Covered in: [scope-and-methodology.md](scope-and-methodology.md).
 - **Alignment** — training a model to behave in accordance with human intentions and values (helpful, honest, harmless), as opposed to merely predicting statistically likely text. Covered in: [rlhf-and-alignment.md](../05-training-methodology/rlhf-and-alignment.md).
+- **All-reduce** — a collective communication operation where every device in a distributed training job ends up with the combined (e.g., summed/averaged) value of some quantity (typically gradients) computed across all devices. Covered in: [distributed-training.md](../05-training-methodology/distributed-training.md).
 - **Attention** — a mechanism that computes relevance scores between a query and a set of candidate items, converts them to weights (typically via softmax), and takes a weighted sum of the candidates; originated in seq2seq translation (Bahdanau/Luong attention) and generalized into Transformer self-attention. Covered in: [rnn-lstm-gru.md](../03-deep-learning-architectures/rnn-lstm-gru.md); see also [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md).
 
 ## B
@@ -109,10 +110,11 @@ Files in this repository define jargon inline on first use with a short parenthe
 
 ## S
 
-- **Self-supervised learning** — training with labels automatically derived from the input data itself (e.g., predicting a masked or next token), rather than requiring human annotation. Covered in: [pretraining-strategies.md](../05-training-methodology/pretraining-strategies.md).
-- **Score function** — the gradient of the log-probability of a data distribution with respect to the data itself; learning this at multiple noise levels is the basis of score-based generative modeling, closely related to DDPM's noise-prediction objective. Covered in: [diffusion-models.md](../04-generative-models/diffusion-models.md).
-- **SOTA (State of the Art)** — the best publicly reported result on a given benchmark at a given point in time. A moving target, not a fixed method — "SOTA" describes a leaderboard position, not any one algorithm. Covered in: [scope-and-methodology.md](scope-and-methodology.md).
 - **Scaling laws** — empirical power-law relationships between a language model's loss and its parameter count, dataset size, and training compute, used to plan large training runs. Covered in: [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md).
+- **Score function** — the gradient of the log-probability of a data distribution with respect to the data itself; learning this at multiple noise levels is the basis of score-based generative modeling, closely related to DDPM's noise-prediction objective. Covered in: [diffusion-models.md](../04-generative-models/diffusion-models.md).
+- **Self-supervised learning** — training with labels automatically derived from the input data itself (e.g., predicting a masked or next token), rather than requiring human annotation. Covered in: [pretraining-strategies.md](../05-training-methodology/pretraining-strategies.md).
+- **Sharding** — splitting a large object (model parameters, gradients, optimizer state) into pieces distributed across multiple devices, so no single device needs to hold the whole thing. Covered in: [distributed-training.md](../05-training-methodology/distributed-training.md).
+- **SOTA (State of the Art)** — the best publicly reported result on a given benchmark at a given point in time. A moving target, not a fixed method — "SOTA" describes a leaderboard position, not any one algorithm. Covered in: [scope-and-methodology.md](scope-and-methodology.md).
 - **Softmax** — a function converting a vector of raw scores (logits) into a valid probability distribution (all positive, summing to 1) by exponentiating and normalizing. Covered in: [loss-functions.md](../01-foundations/loss-functions.md).
 
 ## T
