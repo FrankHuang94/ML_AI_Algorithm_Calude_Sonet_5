@@ -122,13 +122,14 @@ Files in this repository define jargon inline on first use with a short parenthe
 
 ## S
 
+- **Sample efficiency** — how much real-world interaction/data an agent or model needs to reach a given level of performance; model-based RL aims to improve this relative to model-free methods. Covered in: [model-based-rl.md](../07-reinforcement-learning/model-based-rl.md).
 - **Scaling laws** — empirical power-law relationships between a language model's loss and its parameter count, dataset size, and training compute, used to plan large training runs. Covered in: [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md).
 - **Score function** — the gradient of the log-probability of a data distribution with respect to the data itself; learning this at multiple noise levels is the basis of score-based generative modeling, closely related to DDPM's noise-prediction objective. Covered in: [diffusion-models.md](../04-generative-models/diffusion-models.md).
 - **Self-supervised learning** — training with labels automatically derived from the input data itself (e.g., predicting a masked or next token), rather than requiring human annotation. Covered in: [pretraining-strategies.md](../05-training-methodology/pretraining-strategies.md).
 - **Sharding** — splitting a large object (model parameters, gradients, optimizer state) into pieces distributed across multiple devices, so no single device needs to hold the whole thing. Covered in: [distributed-training.md](../05-training-methodology/distributed-training.md).
-- **Sparsity** — the fraction of a network's weights that are zero (or removed); pruning increases sparsity to reduce model size. Covered in: [pruning-and-distillation.md](../06-inference-optimization/pruning-and-distillation.md).
-- **SOTA (State of the Art)** — the best publicly reported result on a given benchmark at a given point in time. A moving target, not a fixed method — "SOTA" describes a leaderboard position, not any one algorithm. Covered in: [scope-and-methodology.md](scope-and-methodology.md).
 - **Softmax** — a function converting a vector of raw scores (logits) into a valid probability distribution (all positive, summing to 1) by exponentiating and normalizing. Covered in: [loss-functions.md](../01-foundations/loss-functions.md).
+- **SOTA (State of the Art)** — the best publicly reported result on a given benchmark at a given point in time. A moving target, not a fixed method — "SOTA" describes a leaderboard position, not any one algorithm. Covered in: [scope-and-methodology.md](scope-and-methodology.md).
+- **Sparsity** — the fraction of a network's weights that are zero (or removed); pruning increases sparsity to reduce model size. Covered in: [pruning-and-distillation.md](../06-inference-optimization/pruning-and-distillation.md).
 
 ## T
 
@@ -138,6 +139,10 @@ Files in this repository define jargon inline on first use with a short parenthe
 ## U
 
 - **Underfitting** — when a model is too simple or undertrained to capture the real patterns in the training data, performing poorly on both training and new data. Contrast with overfitting. Covered in: [regularization-techniques.md](../01-foundations/regularization-techniques.md).
+
+## W
+
+- **World model** — a learned or given representation of how an environment evolves (next state and reward given current state and action), used for planning or generating simulated experience. Covered in: [model-based-rl.md](../07-reinforcement-learning/model-based-rl.md).
 
 ## Z
 
