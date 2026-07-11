@@ -32,6 +32,7 @@ Files in this repository define jargon inline on first use with a short parenthe
 
 ## E
 
+- **𝔼 (expectation)** — the average value of a quantity, weighted by how likely each outcome is; standard notation in ML papers for "averaged over the data" or "averaged over samples from a distribution." Covered in: [gans.md](../04-generative-models/gans.md).
 - **Embedding** — a dense numerical vector representing an input (a word, image, user, etc.) in a learned space where geometric distance corresponds to semantic similarity. Covered in: [loss-functions.md](../01-foundations/loss-functions.md) (contrastive losses); see also [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md).
 - **Entropy** — a measure of the inherent uncertainty (or information content) in a probability distribution; zero for a fully predictable outcome, maximal when all outcomes are equally likely. Covered in: [loss-functions.md](../01-foundations/loss-functions.md).
 
@@ -73,6 +74,8 @@ Files in this repository define jargon inline on first use with a short parenthe
 ## M
 
 - **Markov property** — the assumption that the future depends on the past only through the present state, not the full history; the defining assumption of Markov chains, HMMs, and MDPs. Covered in: [probabilistic-models.md](../02-classical-ml/probabilistic-models.md); see also [value-based-methods.md](../07-reinforcement-learning/value-based-methods.md).
+- **Minimax game/objective** — an optimization setup where two parties have directly opposing goals (one maximizes, one minimizes the same expression); the training framework behind GANs. Covered in: [gans.md](../04-generative-models/gans.md).
+- **Mode collapse** — a GAN failure mode where the generator produces only a small, non-diverse set of outputs that happen to fool the current discriminator, rather than covering the full diversity of the true data distribution. Covered in: [gans.md](../04-generative-models/gans.md).
 - **Mixture of Experts (MoE) / router** — an architectural pattern where many parallel sub-networks ("experts") exist, but a small router network selects only a few to process each token, decoupling total parameter count from per-token compute cost. Covered in: [mixture-of-experts.md](../03-deep-learning-architectures/mixture-of-experts.md).
 - **Momentum** — an optimization technique that accumulates a running average of past gradients and steps in that averaged direction rather than the raw current gradient, smoothing the trajectory. Covered in: [optimization-algorithms.md](../01-foundations/optimization-algorithms.md).
 
