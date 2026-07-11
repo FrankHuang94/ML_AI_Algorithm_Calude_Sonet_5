@@ -42,9 +42,9 @@ Files in this repository define jargon inline on first use with a short parenthe
 ## E
 
 - **ELBO (Evidence Lower BOund)** — a computable lower bound on a generative model's (otherwise intractable) data likelihood, consisting of a reconstruction term and a KL-divergence regularization term; the training objective for VAEs. Covered in: [vaes.md](../04-generative-models/vaes.md).
-- **𝔼 (expectation)** — the average value of a quantity, weighted by how likely each outcome is; standard notation in ML papers for "averaged over the data" or "averaged over samples from a distribution." Covered in: [gans.md](../04-generative-models/gans.md).
 - **Embedding** — a dense numerical vector representing an input (a word, image, user, etc.) in a learned space where geometric distance corresponds to semantic similarity. Covered in: [loss-functions.md](../01-foundations/loss-functions.md) (contrastive losses); see also [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md).
 - **Entropy** — a measure of the inherent uncertainty (or information content) in a probability distribution; zero for a fully predictable outcome, maximal when all outcomes are equally likely. Covered in: [loss-functions.md](../01-foundations/loss-functions.md).
+- **𝔼 (expectation)** — the average value of a quantity, weighted by how likely each outcome is; standard notation in ML papers for "averaged over the data" or "averaged over samples from a distribution." Covered in: [gans.md](../04-generative-models/gans.md).
 - **Experience replay** — storing an RL agent's past experiences in a buffer and training on randomly-sampled batches from it, rather than on the temporally-correlated stream as it's experienced, to stabilize training. Covered in: [value-based-methods.md](../07-reinforcement-learning/value-based-methods.md).
 
 ## F
@@ -55,17 +55,17 @@ Files in this repository define jargon inline on first use with a short parenthe
 ## G
 
 - **Generalization** — how well a model performs on data it did not train on, as opposed to how well it merely memorized its training set. The entire point of regularization is to improve this. Covered in: [regularization-techniques.md](../01-foundations/regularization-techniques.md).
-- **Guidance scale** — in diffusion models, a tunable strength parameter controlling how strongly generation is pushed toward a conditioning signal (e.g., a text prompt) via classifier-free guidance. Covered in: [diffusion-models.md](../04-generative-models/diffusion-models.md).
 - **Gradient** — the vector of partial derivatives of the loss function with respect to every model parameter; points in the direction of steepest increase of the loss, so training steps move opposite to it. Covered in: [optimization-algorithms.md](../01-foundations/optimization-algorithms.md).
 - **Gradient clipping** — rescaling the gradient vector so its norm never exceeds a fixed threshold, to prevent a single abnormally large gradient from destabilizing training. Covered in: [optimization-algorithms.md](../01-foundations/optimization-algorithms.md).
 - **Gradient explosion** — a failure mode where gradients grow multiplicatively as they're backpropagated through many layers or time steps, producing enormous, destabilizing updates. Contrast with vanishing gradients. Covered in: [optimization-algorithms.md](../01-foundations/optimization-algorithms.md).
 - **Gradient vanishing** — the opposite failure mode from gradient explosion: gradients shrink toward zero as they propagate backward through many layers/time steps, so early layers stop learning. Covered in: [rnn-lstm-gru.md](../03-deep-learning-architectures/rnn-lstm-gru.md).
+- **Guidance scale** — in diffusion models, a tunable strength parameter controlling how strongly generation is pushed toward a conditioning signal (e.g., a text prompt) via classifier-free guidance. Covered in: [diffusion-models.md](../04-generative-models/diffusion-models.md).
 
 ## H
 
 - **Hallucination** — when a model generates fluent, confident-sounding output that is factually incorrect; a consequence of training objectives that optimize for plausibility rather than verified truth. Covered in: [open-problems.md](../09-roadmaps/open-problems.md).
-- **Hidden state** — a vector maintained and updated by a recurrent network at each time step, summarizing everything relevant the network has seen so far in a sequence. Covered in: [rnn-lstm-gru.md](../03-deep-learning-architectures/rnn-lstm-gru.md).
 - **Hessian** — the matrix of second derivatives of a function; describes the local curvature of the loss landscape. Too large (parameters²) to compute directly for deep networks, which is why most training uses only first-derivative (gradient) information. Covered in: [optimization-algorithms.md](../01-foundations/optimization-algorithms.md).
+- **Hidden state** — a vector maintained and updated by a recurrent network at each time step, summarizing everything relevant the network has seen so far in a sequence. Covered in: [rnn-lstm-gru.md](../03-deep-learning-architectures/rnn-lstm-gru.md).
 
 ## I
 
@@ -76,8 +76,8 @@ Files in this repository define jargon inline on first use with a short parenthe
 ## K
 
 - **Kernel trick** — a mathematical shortcut letting an algorithm (classically, SVMs) operate as if data had been mapped into a much higher-dimensional space, without ever computing that mapping explicitly, by computing dot products directly via a kernel function. Covered in: [supervised-learning.md](../02-classical-ml/supervised-learning.md).
-- **KV cache** — stored key and value vectors from previous positions in a sequence, reused during autoregressive generation to avoid redundantly recomputing them at every step. Covered in: [kv-cache-and-attention-optimization.md](../06-inference-optimization/kv-cache-and-attention-optimization.md).
 - **KL divergence (Kullback-Leibler divergence)** — a measure of how different one probability distribution is from another (not symmetric); the standard tool for penalizing a distribution for drifting away from a reference distribution. Covered in: [loss-functions.md](../01-foundations/loss-functions.md).
+- **KV cache** — stored key and value vectors from previous positions in a sequence, reused during autoregressive generation to avoid redundantly recomputing them at every step. Covered in: [kv-cache-and-attention-optimization.md](../06-inference-optimization/kv-cache-and-attention-optimization.md).
 
 ## L
 
@@ -92,9 +92,9 @@ Files in this repository define jargon inline on first use with a short parenthe
 - **Markov Decision Process (MDP)** — the standard formalization of sequential decision-making: states, actions, rewards, and a policy, under the Markov property. Covered in: [value-based-methods.md](../07-reinforcement-learning/value-based-methods.md).
 - **Markov property** — the assumption that the future depends on the past only through the present state, not the full history; the defining assumption of Markov chains, HMMs, and MDPs. Covered in: [probabilistic-models.md](../02-classical-ml/probabilistic-models.md); see also [value-based-methods.md](../07-reinforcement-learning/value-based-methods.md).
 - **Minimax game/objective** — an optimization setup where two parties have directly opposing goals (one maximizes, one minimizes the same expression); the training framework behind GANs. Covered in: [gans.md](../04-generative-models/gans.md).
-- **Model collapse** — a degradation in quality/diversity that can occur when models are trained iteratively on data generated by other models, without sufficient grounding in real, diverse data. Covered in: [curriculum-and-data-strategies.md](../05-training-methodology/curriculum-and-data-strategies.md).
-- **Mode collapse** — a GAN failure mode where the generator produces only a small, non-diverse set of outputs that happen to fool the current discriminator, rather than covering the full diversity of the true data distribution. Covered in: [gans.md](../04-generative-models/gans.md).
 - **Mixture of Experts (MoE) / router** — an architectural pattern where many parallel sub-networks ("experts") exist, but a small router network selects only a few to process each token, decoupling total parameter count from per-token compute cost. Covered in: [mixture-of-experts.md](../03-deep-learning-architectures/mixture-of-experts.md).
+- **Mode collapse** — a GAN failure mode where the generator produces only a small, non-diverse set of outputs that happen to fool the current discriminator, rather than covering the full diversity of the true data distribution. Covered in: [gans.md](../04-generative-models/gans.md).
+- **Model collapse** — a degradation in quality/diversity that can occur when models are trained iteratively on data generated by other models, without sufficient grounding in real, diverse data. Covered in: [curriculum-and-data-strategies.md](../05-training-methodology/curriculum-and-data-strategies.md).
 - **Model-free (vs. model-based) RL** — model-free methods (Q-learning, DQN, policy gradients) learn directly from experience without an explicit model of the environment's dynamics; model-based methods learn or use such a model. Covered in: [value-based-methods.md](../07-reinforcement-learning/value-based-methods.md); see also [model-based-rl.md](../07-reinforcement-learning/model-based-rl.md).
 - **Momentum** — an optimization technique that accumulates a running average of past gradients and steps in that averaged direction rather than the raw current gradient, smoothing the trajectory. Covered in: [optimization-algorithms.md](../01-foundations/optimization-algorithms.md).
 
@@ -112,9 +112,8 @@ Files in this repository define jargon inline on first use with a short parenthe
 
 ## Q
 
-- **Query, Key, Value (Q/K/V)** — the three learned projections of each position's input in self-attention: the query represents what a position is looking for, the key represents what a position advertises, and the value represents the information a position offers if attended to. Covered in: [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md).
-
 - **Quantization** — reducing the numerical precision used to represent model weights/activations (e.g., from 16-bit to 4-bit), shrinking memory footprint and often speeding up inference at some accuracy cost. Covered in: [quantization.md](../06-inference-optimization/quantization.md).
+- **Query, Key, Value (Q/K/V)** — the three learned projections of each position's input in self-attention: the query represents what a position is looking for, the key represents what a position advertises, and the value represents the information a position offers if attended to. Covered in: [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md).
 
 ## R
 
