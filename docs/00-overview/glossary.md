@@ -21,6 +21,9 @@ Files in this repository define jargon inline on first use with a short parenthe
 ## C
 
 - **Calibration** — how well a model's stated confidence (predicted probability) matches its actual empirical accuracy. A well-calibrated model that says "80% confident" is right about 80% of the time. Covered in: [regularization-techniques.md](../01-foundations/regularization-techniques.md).
+- **Causal masking** — in self-attention, blocking each position from attending to later positions (by setting their scores to negative infinity before softmax) so a model can't "see the future" it's supposed to predict. Covered in: [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md).
+- **Compute-optimal** — the allocation of a fixed training compute budget between model size and data size that minimizes loss; the Chinchilla paper's central finding. Covered in: [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md).
+- **Cross-attention** — an attention variant where queries come from one sequence (e.g., a decoder) and keys/values come from another (e.g., an encoder's output), letting one sequence look back at another. Covered in: [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md).
 - **Cross-entropy** — a loss function measuring the gap between a predicted probability distribution and the true target distribution; equals the true distribution's entropy plus the KL divergence between true and predicted. The standard loss for classification and language modeling. Covered in: [loss-functions.md](../01-foundations/loss-functions.md).
 
 ## D
@@ -78,6 +81,10 @@ Files in this repository define jargon inline on first use with a short parenthe
 
 - **Perplexity** — a human-interpretable transform of a language model's cross-entropy loss (e^loss); roughly, "the model is as uncertain as if choosing uniformly among this many options per token." Lower is better. Covered in: [loss-functions.md](../01-foundations/loss-functions.md).
 
+## Q
+
+- **Query, Key, Value (Q/K/V)** — the three learned projections of each position's input in self-attention: the query represents what a position is looking for, the key represents what a position advertises, and the value represents the information a position offers if attended to. Covered in: [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md).
+
 ## R
 
 - **Receptive field** — the region of the original input that a given neuron's output is effectively influenced by; grows larger in deeper layers of a CNN. Covered in: [cnn-family.md](../03-deep-learning-architectures/cnn-family.md).
@@ -86,6 +93,7 @@ Files in this repository define jargon inline on first use with a short parenthe
 ## S
 
 - **SOTA (State of the Art)** — the best publicly reported result on a given benchmark at a given point in time. A moving target, not a fixed method — "SOTA" describes a leaderboard position, not any one algorithm. Covered in: [scope-and-methodology.md](scope-and-methodology.md).
+- **Scaling laws** — empirical power-law relationships between a language model's loss and its parameter count, dataset size, and training compute, used to plan large training runs. Covered in: [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md).
 - **Softmax** — a function converting a vector of raw scores (logits) into a valid probability distribution (all positive, summing to 1) by exponentiating and normalizing. Covered in: [loss-functions.md](../01-foundations/loss-functions.md).
 
 ## U
