@@ -45,6 +45,7 @@ Files in this repository define jargon inline on first use with a short parenthe
 ## G
 
 - **Generalization** — how well a model performs on data it did not train on, as opposed to how well it merely memorized its training set. The entire point of regularization is to improve this. Covered in: [regularization-techniques.md](../01-foundations/regularization-techniques.md).
+- **Guidance scale** — in diffusion models, a tunable strength parameter controlling how strongly generation is pushed toward a conditioning signal (e.g., a text prompt) via classifier-free guidance. Covered in: [diffusion-models.md](../04-generative-models/diffusion-models.md).
 - **Gradient** — the vector of partial derivatives of the loss function with respect to every model parameter; points in the direction of steepest increase of the loss, so training steps move opposite to it. Covered in: [optimization-algorithms.md](../01-foundations/optimization-algorithms.md).
 - **Gradient clipping** — rescaling the gradient vector so its norm never exceeds a fixed threshold, to prevent a single abnormally large gradient from destabilizing training. Covered in: [optimization-algorithms.md](../01-foundations/optimization-algorithms.md).
 - **Gradient explosion** — a failure mode where gradients grow multiplicatively as they're backpropagated through many layers or time steps, producing enormous, destabilizing updates. Contrast with vanishing gradients. Covered in: [optimization-algorithms.md](../01-foundations/optimization-algorithms.md).
@@ -101,6 +102,7 @@ Files in this repository define jargon inline on first use with a short parenthe
 
 ## S
 
+- **Score function** — the gradient of the log-probability of a data distribution with respect to the data itself; learning this at multiple noise levels is the basis of score-based generative modeling, closely related to DDPM's noise-prediction objective. Covered in: [diffusion-models.md](../04-generative-models/diffusion-models.md).
 - **SOTA (State of the Art)** — the best publicly reported result on a given benchmark at a given point in time. A moving target, not a fixed method — "SOTA" describes a leaderboard position, not any one algorithm. Covered in: [scope-and-methodology.md](scope-and-methodology.md).
 - **Scaling laws** — empirical power-law relationships between a language model's loss and its parameter count, dataset size, and training compute, used to plan large training runs. Covered in: [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md).
 - **Softmax** — a function converting a vector of raw scores (logits) into a valid probability distribution (all positive, summing to 1) by exponentiating and normalizing. Covered in: [loss-functions.md](../01-foundations/loss-functions.md).
