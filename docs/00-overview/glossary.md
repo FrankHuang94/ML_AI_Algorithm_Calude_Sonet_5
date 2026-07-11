@@ -18,8 +18,13 @@ Files in this repository define jargon inline on first use with a short parenthe
 
 ## C
 
+- **Bias-variance tradeoff** — the tension between systematic error from a model's assumptions being wrong (bias) and sensitivity to the particular training sample used (variance); ensembles like bagging primarily reduce variance. Covered in: [ensemble-methods.md](../02-classical-ml/ensemble-methods.md).
 - **Calibration** — how well a model's stated confidence (predicted probability) matches its actual empirical accuracy. A well-calibrated model that says "80% confident" is right about 80% of the time. Covered in: [regularization-techniques.md](../01-foundations/regularization-techniques.md).
 - **Cross-entropy** — a loss function measuring the gap between a predicted probability distribution and the true target distribution; equals the true distribution's entropy plus the KL divergence between true and predicted. The standard loss for classification and language modeling. Covered in: [loss-functions.md](../01-foundations/loss-functions.md).
+
+## D
+
+- **Data leakage** — when information about the target variable inadvertently leaks into features during preprocessing, inflating training/validation performance in a way that doesn't generalize. Covered in: [ensemble-methods.md](../02-classical-ml/ensemble-methods.md).
 
 ## E
 
