@@ -32,6 +32,7 @@ Files in this repository define jargon inline on first use with a short parenthe
 
 ## E
 
+- **ELBO (Evidence Lower BOund)** — a computable lower bound on a generative model's (otherwise intractable) data likelihood, consisting of a reconstruction term and a KL-divergence regularization term; the training objective for VAEs. Covered in: [vaes.md](../04-generative-models/vaes.md).
 - **𝔼 (expectation)** — the average value of a quantity, weighted by how likely each outcome is; standard notation in ML papers for "averaged over the data" or "averaged over samples from a distribution." Covered in: [gans.md](../04-generative-models/gans.md).
 - **Embedding** — a dense numerical vector representing an input (a word, image, user, etc.) in a learned space where geometric distance corresponds to semantic similarity. Covered in: [loss-functions.md](../01-foundations/loss-functions.md) (contrastive losses); see also [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md).
 - **Entropy** — a measure of the inherent uncertainty (or information content) in a probability distribution; zero for a fully predictable outcome, maximal when all outcomes are equally likely. Covered in: [loss-functions.md](../01-foundations/loss-functions.md).
@@ -86,6 +87,7 @@ Files in this repository define jargon inline on first use with a short parenthe
 ## P
 
 - **Perplexity** — a human-interpretable transform of a language model's cross-entropy loss (e^loss); roughly, "the model is as uncertain as if choosing uniformly among this many options per token." Lower is better. Covered in: [loss-functions.md](../01-foundations/loss-functions.md).
+- **Prior** — an assumed probability distribution over a variable before observing data (e.g., a VAE's assumed standard-normal distribution over latent vectors), used as a reference/target that inference is regularized toward. Covered in: [vaes.md](../04-generative-models/vaes.md).
 
 ## Q
 
@@ -95,6 +97,7 @@ Files in this repository define jargon inline on first use with a short parenthe
 
 - **Receptive field** — the region of the original input that a given neuron's output is effectively influenced by; grows larger in deeper layers of a CNN. Covered in: [cnn-family.md](../03-deep-learning-architectures/cnn-family.md).
 - **ReLU (Rectified Linear Unit)** — the activation function max(0, x); outputs zero for negative inputs and passes positive inputs through unchanged. Standard in CNNs and widely used elsewhere because its gradient doesn't shrink for positive inputs. Covered in: [cnn-family.md](../03-deep-learning-architectures/cnn-family.md).
+- **Reparameterization trick** — rewriting a random sample as a deterministic function of learned parameters plus fixed external randomness, so gradients can backpropagate through an otherwise non-differentiable sampling step. Covered in: [vaes.md](../04-generative-models/vaes.md).
 
 ## S
 
