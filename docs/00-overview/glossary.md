@@ -15,10 +15,10 @@ Files in this repository define jargon inline on first use with a short parenthe
 ## B
 
 - **Benchmark** — a standardized dataset/task pair (plus a scoring rule) used to compare models against each other under identical conditions. "SOTA on benchmark X" means "best published score on that specific standardized test," which is narrower than "best model overall." Covered in: [scope-and-methodology.md](scope-and-methodology.md).
+- **Bias-variance tradeoff** — the tension between systematic error from a model's assumptions being wrong (bias) and sensitivity to the particular training sample used (variance); ensembles like bagging primarily reduce variance. Covered in: [ensemble-methods.md](../02-classical-ml/ensemble-methods.md).
 
 ## C
 
-- **Bias-variance tradeoff** — the tension between systematic error from a model's assumptions being wrong (bias) and sensitivity to the particular training sample used (variance); ensembles like bagging primarily reduce variance. Covered in: [ensemble-methods.md](../02-classical-ml/ensemble-methods.md).
 - **Calibration** — how well a model's stated confidence (predicted probability) matches its actual empirical accuracy. A well-calibrated model that says "80% confident" is right about 80% of the time. Covered in: [regularization-techniques.md](../01-foundations/regularization-techniques.md).
 - **Cross-entropy** — a loss function measuring the gap between a predicted probability distribution and the true target distribution; equals the true distribution's entropy plus the KL divergence between true and predicted. The standard loss for classification and language modeling. Covered in: [loss-functions.md](../01-foundations/loss-functions.md).
 
@@ -61,6 +61,7 @@ Files in this repository define jargon inline on first use with a short parenthe
 
 ## M
 
+- **Markov property** — the assumption that the future depends on the past only through the present state, not the full history; the defining assumption of Markov chains, HMMs, and MDPs. Covered in: [probabilistic-models.md](../02-classical-ml/probabilistic-models.md); see also [value-based-methods.md](../07-reinforcement-learning/value-based-methods.md).
 - **Momentum** — an optimization technique that accumulates a running average of past gradients and steps in that averaged direction rather than the raw current gradient, smoothing the trajectory. Covered in: [optimization-algorithms.md](../01-foundations/optimization-algorithms.md).
 
 ## O
