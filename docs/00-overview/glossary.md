@@ -27,6 +27,7 @@ Files in this repository define jargon inline on first use with a short parenthe
 ## C
 
 - **Calibration** — how well a model's stated confidence (predicted probability) matches its actual empirical accuracy. A well-calibrated model that says "80% confident" is right about 80% of the time. Covered in: [regularization-techniques.md](../01-foundations/regularization-techniques.md).
+- **Catastrophic forgetting** — when training a model on new data degrades or erases previously-learned capabilities, a core obstacle to practical continual/online learning. Covered in: [open-problems.md](../09-roadmaps/open-problems.md).
 - **Causal masking** — in self-attention, blocking each position from attending to later positions (by setting their scores to negative infinity before softmax) so a model can't "see the future" it's supposed to predict. Covered in: [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md).
 - **Compute-optimal** — the allocation of a fixed training compute budget between model size and data size that minimizes loss; the Chinchilla paper's central finding. Covered in: [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md).
 - **Cross-attention** — an attention variant where queries come from one sequence (e.g., a decoder) and keys/values come from another (e.g., an encoder's output), letting one sequence look back at another. Covered in: [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md).
@@ -136,6 +137,7 @@ Files in this repository define jargon inline on first use with a short parenthe
 ## T
 
 - **Temperature** — a scalar dividing logits before softmax during sampling; below 1 sharpens (more deterministic) a model's output distribution, above 1 flattens it (more random/diverse). Covered in: [autoregressive-generation.md](../04-generative-models/autoregressive-generation.md).
+- **Test-time compute** — computation spent at inference time (e.g., generating longer intermediate reasoning) to improve output quality, as a scaling axis distinct from pretraining compute. Covered in: [long-term-outlook.md](../09-roadmaps/long-term-outlook.md).
 - **Token** — a chunk of text (often a word or sub-word piece) that a language model treats as a single unit of input/output. Covered in: [autoregressive-generation.md](../04-generative-models/autoregressive-generation.md).
 
 ## U
