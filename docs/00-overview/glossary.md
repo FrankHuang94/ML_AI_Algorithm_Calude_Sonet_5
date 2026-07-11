@@ -32,6 +32,7 @@ Files in this repository define jargon inline on first use with a short parenthe
 
 - **Data leakage** — when information about the target variable inadvertently leaks into features during preprocessing, inflating training/validation performance in a way that doesn't generalize. Covered in: [ensemble-methods.md](../02-classical-ml/ensemble-methods.md).
 - **Degeneration** — a failure mode of likelihood-maximizing text decoding (greedy/beam search) producing repetitive, generic, or looping output rather than varied, human-like text. Covered in: [autoregressive-generation.md](../04-generative-models/autoregressive-generation.md).
+- **Distillation (knowledge distillation)** — training a smaller "student" model to reproduce a larger "teacher" model's output distribution, producing a smaller, cheaper model that often outperforms one trained from scratch on hard labels alone. Covered in: [pruning-and-distillation.md](../06-inference-optimization/pruning-and-distillation.md).
 
 ## E
 
@@ -88,6 +89,7 @@ Files in this repository define jargon inline on first use with a short parenthe
 
 ## O
 
+- **Over-parameterized** — describes a network with more parameters than strictly necessary for its learned function; the empirical basis for pruning (many weights can be removed with little accuracy loss). Covered in: [pruning-and-distillation.md](../06-inference-optimization/pruning-and-distillation.md).
 - **Overfitting** — when a model fits the training data (including its noise/quirks) so closely that it performs worse on new, unseen data than a less-fitted model would. Contrast with underfitting. Covered in: [regularization-techniques.md](../01-foundations/regularization-techniques.md).
 
 ## P
@@ -117,6 +119,7 @@ Files in this repository define jargon inline on first use with a short parenthe
 - **Score function** — the gradient of the log-probability of a data distribution with respect to the data itself; learning this at multiple noise levels is the basis of score-based generative modeling, closely related to DDPM's noise-prediction objective. Covered in: [diffusion-models.md](../04-generative-models/diffusion-models.md).
 - **Self-supervised learning** — training with labels automatically derived from the input data itself (e.g., predicting a masked or next token), rather than requiring human annotation. Covered in: [pretraining-strategies.md](../05-training-methodology/pretraining-strategies.md).
 - **Sharding** — splitting a large object (model parameters, gradients, optimizer state) into pieces distributed across multiple devices, so no single device needs to hold the whole thing. Covered in: [distributed-training.md](../05-training-methodology/distributed-training.md).
+- **Sparsity** — the fraction of a network's weights that are zero (or removed); pruning increases sparsity to reduce model size. Covered in: [pruning-and-distillation.md](../06-inference-optimization/pruning-and-distillation.md).
 - **SOTA (State of the Art)** — the best publicly reported result on a given benchmark at a given point in time. A moving target, not a fixed method — "SOTA" describes a leaderboard position, not any one algorithm. Covered in: [scope-and-methodology.md](scope-and-methodology.md).
 - **Softmax** — a function converting a vector of raw scores (logits) into a valid probability distribution (all positive, summing to 1) by exponentiating and normalizing. Covered in: [loss-functions.md](../01-foundations/loss-functions.md).
 
