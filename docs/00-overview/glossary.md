@@ -47,6 +47,10 @@ Files in this repository define jargon inline on first use with a short parenthe
 
 - **Hessian** — the matrix of second derivatives of a function; describes the local curvature of the loss landscape. Too large (parameters²) to compute directly for deep networks, which is why most training uses only first-derivative (gradient) information. Covered in: [optimization-algorithms.md](../01-foundations/optimization-algorithms.md).
 
+## I
+
+- **Inductive bias** — a built-in assumption baked into a model architecture (rather than learned from data) that makes certain patterns easier to learn; e.g., convolution's assumption that nearby pixels are related. Covered in: [cnn-family.md](../03-deep-learning-architectures/cnn-family.md).
+
 ## K
 
 - **Kernel trick** — a mathematical shortcut letting an algorithm (classically, SVMs) operate as if data had been mapped into a much higher-dimensional space, without ever computing that mapping explicitly, by computing dot products directly via a kernel function. Covered in: [supervised-learning.md](../02-classical-ml/supervised-learning.md).
@@ -71,6 +75,11 @@ Files in this repository define jargon inline on first use with a short parenthe
 ## P
 
 - **Perplexity** — a human-interpretable transform of a language model's cross-entropy loss (e^loss); roughly, "the model is as uncertain as if choosing uniformly among this many options per token." Lower is better. Covered in: [loss-functions.md](../01-foundations/loss-functions.md).
+
+## R
+
+- **Receptive field** — the region of the original input that a given neuron's output is effectively influenced by; grows larger in deeper layers of a CNN. Covered in: [cnn-family.md](../03-deep-learning-architectures/cnn-family.md).
+- **ReLU (Rectified Linear Unit)** — the activation function max(0, x); outputs zero for negative inputs and passes positive inputs through unchanged. Standard in CNNs and widely used elsewhere because its gradient doesn't shrink for positive inputs. Covered in: [cnn-family.md](../03-deep-learning-architectures/cnn-family.md).
 
 ## S
 
