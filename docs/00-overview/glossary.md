@@ -11,6 +11,7 @@ Files in this repository define jargon inline on first use with a short parenthe
 ## A
 
 - **Ablation** — an experiment where you remove or disable one component of a system (a layer, a loss term, a training trick) and re-measure performance, to find out how much that component actually contributed. If removing it doesn't hurt performance, it wasn't pulling its weight. Covered in: [scope-and-methodology.md](scope-and-methodology.md).
+- **Alignment** — training a model to behave in accordance with human intentions and values (helpful, honest, harmless), as opposed to merely predicting statistically likely text. Covered in: [rlhf-and-alignment.md](../05-training-methodology/rlhf-and-alignment.md).
 - **Attention** — a mechanism that computes relevance scores between a query and a set of candidate items, converts them to weights (typically via softmax), and takes a weighted sum of the candidates; originated in seq2seq translation (Bahdanau/Luong attention) and generalized into Transformer self-attention. Covered in: [rnn-lstm-gru.md](../03-deep-learning-architectures/rnn-lstm-gru.md); see also [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md).
 
 ## B
@@ -91,6 +92,7 @@ Files in this repository define jargon inline on first use with a short parenthe
 
 - **PEFT (Parameter-Efficient Fine-Tuning)** — an umbrella term for fine-tuning methods (LoRA, adapters, prefix/prompt tuning) that freeze most of a pretrained model's weights and train only a small number of additional/modified parameters. Covered in: [finetuning-and-peft.md](../05-training-methodology/finetuning-and-peft.md).
 - **Perplexity** — a human-interpretable transform of a language model's cross-entropy loss (e^loss); roughly, "the model is as uncertain as if choosing uniformly among this many options per token." Lower is better. Covered in: [loss-functions.md](../01-foundations/loss-functions.md).
+- **Policy** — in reinforcement learning, the model/function being trained to choose actions (e.g., which token to generate); RLHF's RL stage optimizes the language model as a policy. Covered in: [rlhf-and-alignment.md](../05-training-methodology/rlhf-and-alignment.md); see also [value-based-methods.md](../07-reinforcement-learning/value-based-methods.md).
 - **Prior** — an assumed probability distribution over a variable before observing data (e.g., a VAE's assumed standard-normal distribution over latent vectors), used as a reference/target that inference is regularized toward. Covered in: [vaes.md](../04-generative-models/vaes.md).
 
 ## Q
@@ -102,6 +104,8 @@ Files in this repository define jargon inline on first use with a short parenthe
 - **Receptive field** — the region of the original input that a given neuron's output is effectively influenced by; grows larger in deeper layers of a CNN. Covered in: [cnn-family.md](../03-deep-learning-architectures/cnn-family.md).
 - **ReLU (Rectified Linear Unit)** — the activation function max(0, x); outputs zero for negative inputs and passes positive inputs through unchanged. Standard in CNNs and widely used elsewhere because its gradient doesn't shrink for positive inputs. Covered in: [cnn-family.md](../03-deep-learning-architectures/cnn-family.md).
 - **Reparameterization trick** — rewriting a random sample as a deterministic function of learned parameters plus fixed external randomness, so gradients can backpropagate through an otherwise non-differentiable sampling step. Covered in: [vaes.md](../04-generative-models/vaes.md).
+- **Reward hacking** — when a policy exploits imperfections in a learned reward model to score highly without actually producing what a human would judge as good output. Covered in: [rlhf-and-alignment.md](../05-training-methodology/rlhf-and-alignment.md).
+- **Reward model** — a model trained to predict human preference judgments, used as a fast automated proxy for human feedback during RL training. Covered in: [rlhf-and-alignment.md](../05-training-methodology/rlhf-and-alignment.md).
 
 ## S
 
