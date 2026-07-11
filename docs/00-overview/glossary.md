@@ -55,6 +55,7 @@ Files in this repository define jargon inline on first use with a short parenthe
 
 ## I
 
+- **Inductive vs. transductive learning** — inductive models generalize to new, unseen nodes/graphs/examples; transductive models are defined only over the fixed data seen during training and don't naturally extend beyond it. Covered in: [graph-neural-networks.md](../03-deep-learning-architectures/graph-neural-networks.md).
 - **Inductive bias** — a built-in assumption baked into a model architecture (rather than learned from data) that makes certain patterns easier to learn; e.g., convolution's assumption that nearby pixels are related. Covered in: [cnn-family.md](../03-deep-learning-architectures/cnn-family.md).
 
 ## K
