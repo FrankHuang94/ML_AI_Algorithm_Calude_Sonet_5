@@ -29,6 +29,7 @@ Files in this repository define jargon inline on first use with a short parenthe
 ## D
 
 - **Data leakage** — when information about the target variable inadvertently leaks into features during preprocessing, inflating training/validation performance in a way that doesn't generalize. Covered in: [ensemble-methods.md](../02-classical-ml/ensemble-methods.md).
+- **Degeneration** — a failure mode of likelihood-maximizing text decoding (greedy/beam search) producing repetitive, generic, or looping output rather than varied, human-like text. Covered in: [autoregressive-generation.md](../04-generative-models/autoregressive-generation.md).
 
 ## E
 
@@ -106,6 +107,11 @@ Files in this repository define jargon inline on first use with a short parenthe
 - **SOTA (State of the Art)** — the best publicly reported result on a given benchmark at a given point in time. A moving target, not a fixed method — "SOTA" describes a leaderboard position, not any one algorithm. Covered in: [scope-and-methodology.md](scope-and-methodology.md).
 - **Scaling laws** — empirical power-law relationships between a language model's loss and its parameter count, dataset size, and training compute, used to plan large training runs. Covered in: [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md).
 - **Softmax** — a function converting a vector of raw scores (logits) into a valid probability distribution (all positive, summing to 1) by exponentiating and normalizing. Covered in: [loss-functions.md](../01-foundations/loss-functions.md).
+
+## T
+
+- **Temperature** — a scalar dividing logits before softmax during sampling; below 1 sharpens (more deterministic) a model's output distribution, above 1 flattens it (more random/diverse). Covered in: [autoregressive-generation.md](../04-generative-models/autoregressive-generation.md).
+- **Token** — a chunk of text (often a word or sub-word piece) that a language model treats as a single unit of input/output. Covered in: [autoregressive-generation.md](../04-generative-models/autoregressive-generation.md).
 
 ## U
 
