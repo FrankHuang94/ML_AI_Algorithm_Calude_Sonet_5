@@ -50,6 +50,18 @@ Every algorithm or technique entry in this repository — whether it's an entire
 
 Minor or closely related techniques get a lighter version of this template rather than the full nine-part treatment — enough to place them accurately without padding.
 
+| # | Section | What it captures |
+|---|---|---|
+| 1 | Name & definition | What the thing is, in one line |
+| 2 | Origin | Year, authors/paper, problem it solved |
+| 3 | Core mechanism | Plain-language → equation/pseudocode → plain-English walkthrough |
+| 4 | Why it mattered | What it replaced or improved on |
+| 5 | Current status | Dominant / niche / superseded / experimental (mid-2026) |
+| 6 | Strengths & limitations | Honest tradeoffs, no marketing language |
+| 7 | Where it's used today | Concrete model families, systems, domains |
+| 8 | Relationship to other algorithms | Explicit cross-links |
+| 9 | Sources | Papers with year; "reported" flag where uncertain |
+
 ## How history and roadmap sections handle uncertainty
 
 The [08-history](../08-history/) files are chronological and cite actual publication years and paper names. Where a date is disputed or the author isn't confident of exact precision, the text says so explicitly rather than inventing false precision.

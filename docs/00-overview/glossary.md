@@ -6,6 +6,12 @@ A living, alphabetized list of every jargon term used in this repository. Each e
 
 Files in this repository define jargon inline on first use with a short parenthetical, per the audience calibration in [scope-and-methodology.md](scope-and-methodology.md). This glossary exists so you don't have to hunt through files to re-find a definition, and so terminology stays consistent repo-wide (the same concept should never have two different names in two different files).
 
+## Term count by letter (as of last full build pass)
+
+| A | B | C | D | E | F | G | H | I | K | L | M | O | P | Q | R | S | T | U | W | Z | Total |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 7 | 3 | 6 | 3 | 5 | 2 | 6 | 3 | 3 | 3 | 5 | 8 | 2 | 4 | 2 | 5 | 9 | 3 | 1 | 1 | 1 | 82 |
+
 ---
 
 ## A
