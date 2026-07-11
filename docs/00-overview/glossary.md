@@ -54,6 +54,7 @@ Files in this repository define jargon inline on first use with a short parenthe
 
 ## L
 
+- **Latent space / latent representation** — a learned, compressed vector representation of data (e.g., an autoencoder's bottleneck layer) capturing its important underlying factors of variation, as opposed to its raw input form. Covered in: [unsupervised-learning.md](../02-classical-ml/unsupervised-learning.md); see also [vaes.md](../04-generative-models/vaes.md).
 - **Learning rate (η)** — the scalar step size controlling how far a single optimization step moves the parameters along the (negative) gradient direction. Covered in: [optimization-algorithms.md](../01-foundations/optimization-algorithms.md).
 - **Logits** — the raw, unnormalized scores a classifier produces before they're converted into probabilities (typically via softmax). Covered in: [loss-functions.md](../01-foundations/loss-functions.md).
 - **Loss landscape** — the high-dimensional surface formed by plotting the loss function's value against every possible setting of the model's parameters; training is the process of finding a low point on this surface. Covered in: [optimization-algorithms.md](../01-foundations/optimization-algorithms.md).
