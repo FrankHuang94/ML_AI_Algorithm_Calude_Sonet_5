@@ -73,6 +73,7 @@ Files in this repository define jargon inline on first use with a short parenthe
 - **Learning rate (η)** — the scalar step size controlling how far a single optimization step moves the parameters along the (negative) gradient direction. Covered in: [optimization-algorithms.md](../01-foundations/optimization-algorithms.md).
 - **Logits** — the raw, unnormalized scores a classifier produces before they're converted into probabilities (typically via softmax). Covered in: [loss-functions.md](../01-foundations/loss-functions.md).
 - **Loss landscape** — the high-dimensional surface formed by plotting the loss function's value against every possible setting of the model's parameters; training is the process of finding a low point on this surface. Covered in: [optimization-algorithms.md](../01-foundations/optimization-algorithms.md).
+- **Low-rank decomposition** — approximating a large matrix update as the product of two much smaller (thin) matrices, drastically reducing trainable parameters; the mechanism behind LoRA. Covered in: [finetuning-and-peft.md](../05-training-methodology/finetuning-and-peft.md).
 
 ## M
 
@@ -88,6 +89,7 @@ Files in this repository define jargon inline on first use with a short parenthe
 
 ## P
 
+- **PEFT (Parameter-Efficient Fine-Tuning)** — an umbrella term for fine-tuning methods (LoRA, adapters, prefix/prompt tuning) that freeze most of a pretrained model's weights and train only a small number of additional/modified parameters. Covered in: [finetuning-and-peft.md](../05-training-methodology/finetuning-and-peft.md).
 - **Perplexity** — a human-interpretable transform of a language model's cross-entropy loss (e^loss); roughly, "the model is as uncertain as if choosing uniformly among this many options per token." Lower is better. Covered in: [loss-functions.md](../01-foundations/loss-functions.md).
 - **Prior** — an assumed probability distribution over a variable before observing data (e.g., a VAE's assumed standard-normal distribution over latent vectors), used as a reference/target that inference is regularized toward. Covered in: [vaes.md](../04-generative-models/vaes.md).
 
