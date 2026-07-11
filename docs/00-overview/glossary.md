@@ -68,6 +68,7 @@ Files in this repository define jargon inline on first use with a short parenthe
 ## K
 
 - **Kernel trick** — a mathematical shortcut letting an algorithm (classically, SVMs) operate as if data had been mapped into a much higher-dimensional space, without ever computing that mapping explicitly, by computing dot products directly via a kernel function. Covered in: [supervised-learning.md](../02-classical-ml/supervised-learning.md).
+- **KV cache** — stored key and value vectors from previous positions in a sequence, reused during autoregressive generation to avoid redundantly recomputing them at every step. Covered in: [kv-cache-and-attention-optimization.md](../06-inference-optimization/kv-cache-and-attention-optimization.md).
 - **KL divergence (Kullback-Leibler divergence)** — a measure of how different one probability distribution is from another (not symmetric); the standard tool for penalizing a distribution for drifting away from a reference distribution. Covered in: [loss-functions.md](../01-foundations/loss-functions.md).
 
 ## L
