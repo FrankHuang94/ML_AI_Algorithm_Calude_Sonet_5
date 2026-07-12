@@ -19,7 +19,20 @@ quantized_value = round(real_value / s)
 real_value_approx = quantized_value · s
 ```
 
-Walkthrough: s is chosen so that the full range of real-valued weights maps onto the available integer range (e.g., −128 to 127 for signed 8-bit integers, or −8 to 7 for 4-bit). Multiplying by s and rounding compresses each weight into a small integer; multiplying that integer back by s recovers an approximation of the original value — not exact, since rounding to the nearest available integer loses some precision, but close enough that, chosen carefully, the model's overall behavior is largely preserved. The smaller the bit-width, the fewer distinct values are available to represent the same range, and the coarser (less precise) this approximation becomes — which is why going from 8-bit to 4-bit saves more memory but risks more accuracy loss, and why the specific choice of grouping (how many weights share one scale factor) and calibration procedure (how the range/scale is determined) matters a great deal to how much accuracy is actually lost in practice.
+Picture it as snapping each continuous weight to the nearest "rung" on a ladder with only a few rungs. INT4 gives you just 16 rungs to represent the whole range of values:
+
+```
+   Original weights (continuous):   -0.9   -0.3    0.0   0.25   0.7   0.95
+                                       │      │      │     │      │     │
+                                       ▼      ▼      ▼     ▼      ▼     ▼
+   INT4 grid (16 evenly-spaced rungs across the range, here −1 … +1):
+     -1.0  -0.87 ... -0.33 -0.20  0.0  0.20  0.33 ...  0.73  0.87  1.0
+       │           │      │            │     │              │
+   snapped:      -0.87  -0.33   0.0   0.20  0.73  0.87   ← each weight rounds to its nearest rung
+   error:        (−0.03)(+0.03) (0)  (−0.05)(+0.03)(−0.08)  ← small rounding error per weight
+```
+
+Walkthrough: s is chosen so that the full range of real-valued weights maps onto the available integer range (e.g., −128 to 127 for signed 8-bit integers, or −8 to 7 for 4-bit). Multiplying by s and rounding compresses each weight into a small integer; multiplying that integer back by s recovers an approximation of the original value — not exact, since rounding to the nearest available integer loses some precision, but close enough that, chosen carefully, the model's overall behavior is largely preserved. The reason it works at all: a large model has hundreds of billions of weights, and the individual rounding errors are small and roughly independent, so they tend to average out rather than compound — the model as a whole is far more robust to a little noise on every weight than intuition suggests. INT8 (256 rungs) is almost always nearly lossless; INT4 (16 rungs) is where careful method choice starts to matter; below that, errors stop averaging out cleanly and accuracy degrades faster. The smaller the bit-width, the fewer distinct values are available to represent the same range, and the coarser (less precise) this approximation becomes — which is why going from 8-bit to 4-bit saves more memory but risks more accuracy loss, and why the specific choice of grouping (how many weights share one scale factor) and calibration procedure (how the range/scale is determined) matters a great deal to how much accuracy is actually lost in practice.
 
 ## Post-training quantization (PTQ) vs. quantization-aware training (QAT)
 
