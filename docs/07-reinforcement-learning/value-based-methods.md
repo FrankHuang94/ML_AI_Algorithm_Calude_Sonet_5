@@ -2,6 +2,17 @@
 
 Reinforcement learning (RL) is a distinct branch of machine learning from the supervised/self-supervised learning covered elsewhere in this repository: instead of learning from a fixed dataset of correct answers, an RL agent learns by interacting with an environment, taking actions, and receiving rewards, trying to learn a strategy that maximizes cumulative reward over time. This file covers the Markov Decision Process framing and the classic value-based methods (Q-learning, DQN and its variants) that were RL's first deep-learning success story.
 
+The entire field is built on one loop — the agent acts, the world responds with a new situation and a reward, repeat — and it's worth fixing this picture in mind before any of the algorithms, because everything else (in this file and in [policy-gradient-methods.md](policy-gradient-methods.md) and [rl-for-llms.md](rl-for-llms.md)) is a different strategy for learning inside it:
+
+```mermaid
+flowchart LR
+    A["AGENT<br/>(the policy we're training)"] -->|"action aₜ<br/>(e.g. move left)"| E["ENVIRONMENT<br/>(game, robot, conversation)"]
+    E -->|"new state s₍ₜ₊₁₎<br/>(what things look like now)"| A
+    E -->|"reward rₜ<br/>(how good that was: +1, 0, -1…)"| A
+```
+
+The one thing that makes RL genuinely harder than supervised learning: the reward often doesn't tell you *which* action was responsible. You might win a game 40 moves after the move that actually mattered, and the reward arrives only at the end — figuring out which earlier actions deserve credit for a delayed reward is the **credit assignment problem**, and nearly every RL algorithm is, at heart, a different answer to it.
+
 ## The Markov Decision Process (MDP) framing
 
 **Name & definition.** A Markov Decision Process formalizes sequential decision-making under uncertainty using four core ingredients: a set of possible **states** (a full description of the current situation, e.g., a game board position), a set of possible **actions** (choices available to the agent), a **reward** signal (a number received after taking an action in a state, indicating how good that outcome was), and a **policy** (the agent's strategy — a rule, possibly learned, for choosing an action given the current state).
@@ -23,6 +34,8 @@ Q(s, a) ← Q(s, a) + α · [ r + γ · max_a' Q(s', a') − Q(s, a) ]
 ```
 
 Walkthrough: after taking action a in state s, observing reward r, and landing in new state s', update the current estimate Q(s, a) to move a little bit (controlled by learning rate α — see [optimization-algorithms.md](../01-foundations/optimization-algorithms.md)) toward a better estimate: the reward just received, plus the discounted value of the best action available from the new state s' (max_a' Q(s', a'), assuming you'll act optimally going forward). This is a form of **bootstrapping** — the update uses the model's own current (imperfect) estimate of future value to improve its estimate of present value, gradually refining both as more experience accumulates, rather than needing to wait until a full episode concludes to know the true total reward. Once a good Q-function is learned, the optimal policy is simple: in any state, just pick whichever action has the highest Q-value.
+
+**A concrete update.** Say Q(s, "jump") currently estimates 5.0. The agent jumps, receives reward r = 2, and lands in state s' where the best available action is worth Q(s', best) = 10. With learning rate α = 0.1 and discount γ = 0.9, the "better estimate" (the **target**) is r + γ·max = 2 + 0.9·10 = 11. The update nudges the old estimate 10% of the way toward it: Q(s, "jump") ← 5.0 + 0.1·(11 − 5.0) = 5.6. The quantity in brackets (11 − 5.0 = 6.0) is the **temporal-difference (TD) error** — "reality came out 6 better than I predicted, so nudge my prediction up." Repeat this millions of times across an environment and the estimates converge toward the true long-run values. Notice how the delayed-reward/credit-assignment problem is handled: value flows *backward* one step at a time — a good outcome raises the value of the state just before it, which on a later visit raises the value of the state before *that*, and so on, until credit has propagated back to the early actions that set it up.
 
 **Why it mattered.** Q-learning provided a simple, provably-convergent (under certain conditions) method for learning optimal behavior purely from trial-and-error interaction, without needing to know the environment's underlying dynamics in advance — a foundational result for model-free reinforcement learning.
 
