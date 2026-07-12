@@ -41,7 +41,15 @@ Walkthrough: imagine trying to guess the weather (hidden state: sunny or rainy) 
 - **E-step (Expectation):** given the model's current parameters, compute the expected value of the hidden variables (e.g., for a GMM, compute the probability that each data point belongs to each Gaussian component, given the current component parameters).
 - **M-step (Maximization):** given those expected hidden-variable values, re-estimate the model's parameters to maximize the likelihood of the observed data (e.g., recompute each Gaussian component's mean and variance using the points, weighted by their E-step membership probabilities).
 
-Walkthrough: this is the same chicken-and-egg pattern seen in k-means (in fact, k-means is a simplified, "hard-assignment" special case of EM applied to a restricted GMM) — you can't know the hidden assignments without knowing the parameters, and you can't estimate the parameters without knowing the assignments, so you alternate, and each full E-M cycle is guaranteed to never decrease the likelihood of the observed data (though it can get stuck in a local optimum, so multiple random initializations are common practice, exactly as with k-means).
+```mermaid
+flowchart LR
+    INIT[Guess initial<br/>parameters] --> E["E-step:<br/>given parameters, infer<br/>hidden variables<br/>(soft assignments)"]
+    E --> M["M-step:<br/>given assignments, re-estimate<br/>parameters to maximize likelihood"]
+    M -->|"likelihood improved;<br/>repeat"| E
+    M -->|"converged<br/>(likelihood stops improving)"| DONE[Final parameters]
+```
+
+Walkthrough: this is the same chicken-and-egg pattern seen in k-means (in fact, k-means is a simplified, "hard-assignment" special case of EM applied to a restricted GMM) — you can't know the hidden assignments without knowing the parameters, and you can't estimate the parameters without knowing the assignments, so you alternate, and each full E-M cycle is guaranteed to never decrease the likelihood of the observed data (though it can get stuck in a local optimum, so multiple random initializations are common practice, exactly as with k-means). The one-sentence version to remember: **EM is "guess, then improve one half at a time, forever until it stops improving."** The reason it can never make the likelihood worse is that each half-step is itself a maximization holding the other half fixed — so the only directions it can move are flat or uphill. That guarantee is EM's whole appeal: no learning rate to tune, no risk of a step overshooting and diverging the way gradient descent can.
 
 **Why it mattered.** EM provided a general-purpose recipe applicable to an entire family of "hidden structure" problems (GMMs, HMMs, and many others) rather than requiring a bespoke derivation for each one, and its core idea — alternate between inferring hidden structure and optimizing parameters given that inferred structure — recurs conceptually in the variational inference machinery behind VAEs (see [vaes.md](../04-generative-models/vaes.md)), even though VAEs use gradient-based optimization rather than EM's exact alternating steps.
 
