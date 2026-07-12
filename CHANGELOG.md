@@ -1,5 +1,33 @@
 # Changelog
 
+## v2 — Opus review-and-expand pass
+
+A full second pass over every content file to correct any technical imprecision, deepen explanations, and make the material more understandable. Total content grew from ~69,600 to ~78,000+ words, and hand-drawn visuals were added throughout — not as padding, but to make the hardest-to-picture mechanisms concrete.
+
+**Correctness / precision fixes**
+- Corrected self-attention's "permutation-invariant" to the precise term **permutation-equivariant** (with the distinction explained) in the cornerstone Transformer file.
+- Clarified the classical-vs-normalized (EMA) **momentum** formulations, so readers aren't confused when a paper's equation doesn't match their framework's code.
+
+**Understandability additions (worked examples + ASCII/Mermaid visuals)**
+- Concrete numeric walkthroughs added where they most help: a gradient-descent step, cross-entropy loss values, an attention weighted-sum, a Q-learning update (with TD error), LoRA's parameter savings, INT4 quantization "ladder rungs."
+- New diagrams: optimizer family-tree, train/validation loss curve (overfitting), loss-function shapes, decision-boundary shapes per classifier, bagging-vs-boosting, k-means-vs-DBSCAN on concentric rings, EM loop, attention data-flow, convolution edge-detector, LSTM conveyor-belt, MoE routing, message passing, GAN adversarial loop, diffusion forward/reverse, reparameterization gradient-flow, sampling strategies, RLHF pipeline, parallelism types, KV-cache recompute, speculative draft-verify, agent-environment loop, PPO clipping.
+
+**Content brought current to mid-2026 (genuine gaps filled)**
+- Optimizers: **Muon** (2024) and the **WSD** learning-rate schedule.
+- Regularization: **GroupNorm**, **QK-norm**, stochastic depth, and an **implicit regularization** section (SGD noise, flat minima).
+- Losses: **Huber loss**, and the **forward-vs-reverse KL** (mode-covering vs mode-seeking) distinction.
+- Transformers: the **feedforward sub-layer** (previously only in the block diagram), gated activations (GELU/SwiGLU), and the train-parallel-vs-generate-sequential clarification tied to the KV cache.
+- MoE: fine-grained + shared experts (DeepSeek-style).
+- Diffusion: **flow matching / rectified flow**, DDIM, and distillation-based fast samplers.
+- VAEs: posterior collapse, β-VAE, and **VQ-VAE** (the bridge to autoregressive image/audio generation).
+- Training: a **tokenization/BPE** section, **GRPO** (value-model-free RL for reasoning models), and the DoRA/LoRA family.
+- Classical ML: the discriminative-vs-generative framing made explicit up front.
+
+**Housekeeping**
+- Glossary grew to ~105 terms, kept alphabetized and in sync with every addition; term-count table refreshed.
+- Master comparison table updated (Muon, flow matching) for cross-file consistency.
+- Re-verified: all internal links resolve, all 14 Mermaid diagrams are well-formed, every file has at least one visual.
+
 ## Build complete — ML/AI Algorithm Knowledge Base v1
 
 The full repository build described in the original scope is complete: a comprehensive, indexed, markdown-based reference covering ML/AI algorithms from classical statistical methods through frontier 2026 LLM training and inference practice, plus their development history and near/long-term outlook.
