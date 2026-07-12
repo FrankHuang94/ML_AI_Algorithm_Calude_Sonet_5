@@ -28,6 +28,21 @@ z = μ + σ · ε
 
 Walkthrough: this is mathematically equivalent to sampling z ~ N(μ, σ²) directly (multiplying a standard normal sample by σ and shifting it by μ produces exactly a N(μ, σ²)-distributed value), but it restructures the computation so that all the *randomness* is isolated in ε — a value with no learned parameters, sampled once per forward pass and then held fixed for the purposes of computing gradients. Because z is now a deterministic, differentiable function of μ, σ, and ε, gradients can flow backward through z to μ and σ (and from there, back into the encoder's weights) exactly as they would through any other layer. This is a genuinely clever, non-obvious piece of engineering — moving the "randomness" outside the part of the computation graph that needs a gradient — and it's the specific mechanical trick that makes training a VAE with standard backpropagation possible at all.
 
+The picture below shows why it matters — where the "random" step sits relative to the gradient path:
+
+```
+   WITHOUT the trick (can't train):        WITH the trick (trainable):
+
+   x → encoder → (μ, σ) → [sample z] → decoder → x̂     x → encoder → (μ,σ) ─┐
+                              ▲                                               ├─→ z = μ+σ·ε → decoder → x̂
+                     random step BLOCKS                    ε ~ N(0,1) ───────┘         │
+                     the gradient from                    (random, but OUTSIDE         │
+                     reaching μ, σ                          the gradient path)   gradient flows
+                                                                                 back through μ,σ ✓
+```
+
+The gradient needs a continuous, differentiable trail from the loss back to every learned parameter. A raw "draw a random sample" operation is a wall the gradient can't cross. By rewriting the sample as `μ + σ·ε` with ε supplied from outside, the only things on the gradient's path are ordinary arithmetic (multiply, add) — the randomness is shunted off to the side where the gradient doesn't need to go.
+
 ## The ELBO, explained before the formula
 
 **In plain English first.** A VAE would ideally like to directly maximize the likelihood of the training data under the model — roughly, "how probable does my model consider the real training examples to be" (higher is better). But computing this exact likelihood requires accounting for every possible latent vector z that could have produced a given input x, which is generally intractable (there's no efficient way to sum/integrate over all of them for a complex model). Instead, VAEs maximize a *lower bound* on that likelihood — a quantity that's provably always less than or equal to the true (intractable) likelihood, but which is actually possible to compute. This lower bound is called the **Evidence Lower BOund**, or **ELBO**. The logic is: since you can't directly maximize the real target, maximize the best computable stand-in for it instead — and because it's a genuine lower bound (not just a loose approximation), pushing it up is guaranteed to be pushing the true likelihood up too (or at least not letting it go down), even though you can't measure the true likelihood directly.
@@ -40,11 +55,17 @@ ELBO = 𝔼_{z~q(z|x)}[log p(x|z)]  −  D_KL(q(z|x) ‖ p(z))
 
 Walkthrough of each term: q(z|x) is the encoder's distribution over z given input x (the μ, σ from above); p(x|z) is the decoder's distribution over reconstructions given a latent z; p(z) is the **prior** — the well-behaved target distribution we want the latent space to look like overall (standard normal, N(0,1)). The first term, 𝔼_{z~q(z|x)}[log p(x|z)], is the **reconstruction term**: it rewards the model for reconstructing x accurately from latent samples drawn from the encoder's distribution — this is essentially the same reconstruction objective a plain autoencoder uses. The second term, the KL divergence (see [loss-functions.md](../01-foundations/loss-functions.md)) between the encoder's distribution q(z|x) and the prior p(z), is the **regularization term**: it penalizes the encoder for producing a distribution that strays too far from the well-behaved standard normal shape we want the overall latent space to have. Training maximizes the ELBO (equivalently, minimizes its negative as a loss), which means balancing two competing pressures: reconstruct the input well, but don't let the latent distribution drift too far from the nice, samplable standard normal shape. This tension is exactly what gives a trained VAE both a latent space that's well-organized enough to sample from, and a decoder that's good enough to make those samples look realistic.
 
+**A characteristic failure mode: posterior collapse.** The tug-of-war between the two ELBO terms has a well-known way of going wrong. If the decoder is powerful enough to reconstruct inputs reasonably well while largely *ignoring* z, the model can drive the KL term to zero by making the encoder output essentially the prior for every input (q(z|x) ≈ p(z), so z carries no information about x). The ELBO looks fine, but the latent code has "collapsed" to uselessness — the VAE has quietly degenerated into a decoder that ignores its latent input. This is called **posterior collapse**, and mitigations (KL annealing — ramping up the KL term's weight gradually; weakening the decoder; or the free-bits trick) are a standard part of the practical VAE toolkit.
+
+**β-VAE (tuning the balance).** Since the two terms are in tension, a natural knob is to weight the KL term by a coefficient β: `reconstruction − β·KL`. Setting β > 1 pressures the latent dimensions to be more independent and each capture a distinct factor of variation (a property called **disentanglement** — e.g., one latent dimension controlling rotation, another controlling size), at some cost to reconstruction sharpness; β < 1 does the reverse. β-VAE (Higgins et al., 2017) made this trade explicit and is a standard reference point for controllable latent representations.
+
 ## Relationship to autoencoders and diffusion models
 
 **Vs. plain autoencoders.** A plain autoencoder (see [unsupervised-learning.md](../02-classical-ml/unsupervised-learning.md)) is deterministic (fixed input → fixed latent point) and has no mechanism encouraging a well-organized latent space — it's a compression tool, not a generative model. A VAE's probabilistic encoder and KL-regularization term are exactly what convert "compression" into "generation."
 
 **Vs. diffusion models.** Diffusion models (see [diffusion-models.md](diffusion-models.md)) can be viewed, at a conceptual level, as pushing the VAE's core idea to an extreme: instead of one encoding step compressing an input into a single latent distribution, diffusion uses a long sequence of many small, gradual noising steps, and instead of one decoding step, uses a long sequence of many small denoising steps. Latent diffusion models (a specific, widely-used variant covered in [diffusion-models.md](diffusion-models.md)) additionally use an actual VAE explicitly as a first-stage compressor — running the diffusion process itself in a VAE's smaller latent space rather than directly on raw pixels — a direct, literal architectural reuse of the VAE mechanism covered in this file, not just a conceptual echo of it.
+
+**VQ-VAE — discrete latents that bridge to autoregressive generation.** One VAE variant deserves its own mention because it connects this file to [autoregressive-generation.md](autoregressive-generation.md). A **VQ-VAE** (Vector-Quantized VAE, van den Oord et al., 2017) replaces the continuous latent with a *discrete* one: the encoder's output is snapped to the nearest entry in a learned "codebook" of vectors, so each latent position becomes effectively a token from a finite vocabulary. Why this matters: once an image or audio clip is encoded as a grid/sequence of discrete tokens, you can model it with exactly the same autoregressive, next-token-prediction machinery used for text (see [autoregressive-generation.md](autoregressive-generation.md)) — a Transformer predicting the next image-token. This "tokenize with a VQ-VAE, then generate tokens autoregressively" recipe underlies a family of image and audio generation systems (including neural audio codecs and some multimodal models that treat images as token sequences), and is the main reason VAEs remain relevant to the autoregressive/LLM side of the field, not just the diffusion side.
 
 ## Current status
 
@@ -73,4 +94,6 @@ Walkthrough of each term: q(z|x) is the encoder's distribution over z given inpu
 ## Sources
 
 - Kingma, Welling, "Auto-Encoding Variational Bayes" (2013, published 2014)
+- Higgins et al., "β-VAE: Learning Basic Visual Concepts with a Constrained Variational Framework" (2017)
+- van den Oord, Vinyals, Kavukcuoglu, "Neural Discrete Representation Learning" (2017) [VQ-VAE]
 - Rezende, Mohamed, Wierstra, "Stochastic Backpropagation and Approximate Inference in Deep Generative Models" (2014) — independently introduced closely related ideas around the same time
