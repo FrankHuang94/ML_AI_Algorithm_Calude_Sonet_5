@@ -13,7 +13,19 @@ message_i = AGGREGATE({ h_j : j ∈ neighbors(i) })
 h_i' = UPDATE(h_i, message_i)
 ```
 
-Walkthrough: for every node i, look at all of its directly-connected neighbor nodes j, combine their current representations h_j somehow (AGGREGATE — often a sum, mean, or max, since the number of neighbors varies per node and the aggregation needs to handle a variable-size input), and use that combined message, together with the node's own current representation, to compute its next-layer representation (UPDATE — typically a small neural network layer). Stacking k message-passing layers lets each node's final representation incorporate information from neighbors up to k graph-hops away — directly analogous to how stacking CNN layers grows the receptive field (see [cnn-family.md](cnn-family.md)), except the relevant "neighborhood" here is defined by graph connectivity rather than spatial adjacency.
+```
+   Before one message-passing layer      After: node A has gathered from B, C, D
+        B                                       B
+        │                                       │
+   C ── A ── D                             C ── A ── D
+                                                ▲
+   A's new representation = UPDATE(            A now "knows about" its
+     A's old value,                            immediate neighbors B, C, D.
+     AGGREGATE(B, C, D) )                      After a 2nd layer, it also knows
+                                               about B/C/D's neighbors (2 hops), etc.
+```
+
+Walkthrough: for every node i, look at all of its directly-connected neighbor nodes j, combine their current representations h_j somehow (AGGREGATE — often a sum, mean, or max, since the number of neighbors varies per node and the aggregation needs to handle a variable-size input), and use that combined message, together with the node's own current representation, to compute its next-layer representation (UPDATE — typically a small neural network layer). Stacking k message-passing layers lets each node's final representation incorporate information from neighbors up to k graph-hops away — directly analogous to how stacking CNN layers grows the receptive field (see [cnn-family.md](cnn-family.md)), except the relevant "neighborhood" here is defined by graph connectivity rather than spatial adjacency. (In fact, a CNN can be seen as a special case of message passing on a very regular grid-shaped graph where each pixel's neighbors are the pixels around it, and self-attention as message passing on a fully-connected graph where every token is every other token's neighbor — a unifying view that recurs in the literature.)
 
 **Why this framework matters.** It gives GNNs the same kind of built-in structural assumption (inductive bias — see the glossary) that made CNNs effective for images: rather than treating every node-pair as equally likely to be related (as a fully-connected network would, ignoring the graph structure entirely), message passing bakes in the assumption that directly-connected nodes are the most relevant source of information for updating a node's representation, which is usually a good real-world assumption for graph-structured data.
 
