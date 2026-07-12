@@ -2,6 +2,25 @@
 
 Unsupervised learning finds structure in data that has no labels — no "correct answer" is provided per example. This file covers clustering (grouping similar examples together), dimensionality reduction (compressing data into fewer dimensions while preserving important structure), and basic autoencoders, which bridge into the generative models covered in [04-generative-models](../04-generative-models/).
 
+The clustering algorithms below differ mainly in *what shape of cluster they can find*, and the cleanest way to see this is a dataset where the "right" answer is two concentric rings — an inner blob surrounded by an outer ring. k-means, which assumes clusters are round blobs around a center point, gets it badly wrong; DBSCAN, which follows density, gets it right:
+
+```
+   The true structure          k-means result             DBSCAN result
+   (2 concentric rings)         (splits by nearest         (follows density,
+                                 center — WRONG)            recovers rings — RIGHT)
+      x x x x x                   x x A A A                   x x x x x
+    x         x                 x         A                 x         x
+   x   o o o   x               B   o o A   A               x   o o o   x
+   x   o   o   x               B   o   A   A               x   o   o   x
+   x   o o o   x               B   B o A   A               x   o o o   x
+    x         x                 B         A                 x         x
+      x x x x x                   B B B A A                   x x x x x
+                              (cuts a straight line       (inner blob = one cluster,
+                               through both rings)          outer ring = another)
+```
+
+This one picture explains most of the "when to use what" for clustering: if your clusters are roughly round and similarly-sized, k-means is fast and fine; if they have arbitrary shapes or you don't know how many there are, you need a density- or hierarchy-based method. Keep the rings in mind as you read.
+
 ## k-means clustering
 
 **Name & definition.** k-means partitions data into k clusters by iteratively assigning each point to its nearest cluster center and then recomputing each center as the mean of its assigned points.
