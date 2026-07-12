@@ -2,6 +2,14 @@
 
 Pretraining is the (usually enormous) initial training phase that gives a model its general capabilities, before any task-specific fine-tuning (see [finetuning-and-peft.md](finetuning-and-peft.md)) or alignment work (see [rlhf-and-alignment.md](rlhf-and-alignment.md)) happens. This file covers the self-supervised objectives used for pretraining and the scaling-law-driven practice of deciding how much compute to spend on model size vs. data.
 
+## First, a prerequisite: tokenization
+
+Before any of the objectives below can run, raw text has to be turned into the **tokens** the model actually consumes (the term is used throughout this repository — see the glossary — but how text *becomes* tokens deserves a brief explanation, since it's a genuine part of the pretraining pipeline). A model does not read characters or whole words; it reads a fixed vocabulary of a few tens of thousands of **subword** units produced by a **tokenizer**.
+
+The dominant approach is **Byte-Pair Encoding (BPE)** (and close relatives like WordPiece and Unigram/SentencePiece). BPE is learned from the training corpus by a simple greedy procedure: start with individual characters (or bytes), then repeatedly find the most frequent adjacent pair and merge it into a new single token, until you've built up a vocabulary of the target size. Common words end up as single tokens ("the", "ing"), rarer words get split into a few pieces ("tokenization" → "token" + "ization"), and truly novel strings fall back to characters/bytes — which guarantees the tokenizer can represent *any* input without an "unknown word" problem.
+
+Why this matters beyond plumbing: the tokenizer determines what "one step" of next-token prediction even means, and it has real downstream consequences — token count drives both context-window usage and API cost; languages that the tokenizer splits into many pieces (often non-English or code-heavy text) effectively get less efficient use of the context window; and quirks of tokenization are behind a surprising number of model failures (e.g., difficulty with character-level tasks like counting letters, because the model never sees individual letters, only subword chunks). Modern tokenizers are typically **byte-level** BPE, meaning they operate on raw bytes and so can encode any Unicode text, emoji, or binary-ish content without ever failing.
+
 ## Self-supervised learning, framed
 
 **Name & definition.** Self-supervised learning trains a model using labels that are automatically derived from the input data itself, rather than requiring humans to manually annotate examples.
@@ -61,6 +69,7 @@ The Kaplan et al. (2020) and Chinchilla (Hoffmann et al., 2022) scaling laws are
 
 ## Sources
 
+- Sennrich, Haddow, Birch, "Neural Machine Translation of Rare Words with Subword Units" (2016) [BPE for NLP]
 - Devlin, Chang, Lee, Toutanova, "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding" (2018)
 - Radford et al., "Improving Language Understanding by Generative Pre-Training" (2018) [GPT-1]
 - Radford et al., "Learning Transferable Visual Models From Natural Language Supervision" (2021) [CLIP]

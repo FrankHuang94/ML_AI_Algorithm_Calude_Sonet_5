@@ -73,6 +73,7 @@ Files in this repository define jargon inline on first use with a short parenthe
 - **Gradient explosion** — a failure mode where gradients grow multiplicatively as they're backpropagated through many layers or time steps, producing enormous, destabilizing updates. Contrast with vanishing gradients. Covered in: [optimization-algorithms.md](../01-foundations/optimization-algorithms.md).
 - **Gradient vanishing** — the opposite failure mode from gradient explosion: gradients shrink toward zero as they propagate backward through many layers/time steps, so early layers stop learning. Covered in: [rnn-lstm-gru.md](../03-deep-learning-architectures/rnn-lstm-gru.md).
 - **GroupNorm (Group Normalization)** — a normalization scheme that normalizes over a group of feature channels per example; batch-independent like LayerNorm, and common in diffusion-model U-Nets. Covered in: [regularization-techniques.md](../01-foundations/regularization-techniques.md).
+- **GRPO (Group Relative Policy Optimization)** — an RL algorithm for LLMs that removes PPO's separate value model by using the average score of a group of sampled responses as the baseline; prominent in reasoning-model training. Covered in: [rlhf-and-alignment.md](../05-training-methodology/rlhf-and-alignment.md).
 - **Guidance scale** — in diffusion models, a tunable strength parameter controlling how strongly generation is pushed toward a conditioning signal (e.g., a text prompt) via classifier-free guidance. Covered in: [diffusion-models.md](../04-generative-models/diffusion-models.md).
 
 ## H
@@ -161,6 +162,7 @@ Files in this repository define jargon inline on first use with a short parenthe
 - **Temperature** — a scalar dividing logits before softmax during sampling; below 1 sharpens (more deterministic) a model's output distribution, above 1 flattens it (more random/diverse). Covered in: [autoregressive-generation.md](../04-generative-models/autoregressive-generation.md).
 - **Test-time compute** — computation spent at inference time (e.g., generating longer intermediate reasoning) to improve output quality, as a scaling axis distinct from pretraining compute. Covered in: [long-term-outlook.md](../09-roadmaps/long-term-outlook.md).
 - **Token** — a chunk of text (often a word or sub-word piece) that a language model treats as a single unit of input/output. Covered in: [autoregressive-generation.md](../04-generative-models/autoregressive-generation.md).
+- **Tokenizer / BPE (Byte-Pair Encoding)** — the component (and dominant algorithm) that converts raw text into the fixed subword vocabulary a model consumes, by greedily merging frequent adjacent pairs into single tokens. Covered in: [pretraining-strategies.md](../05-training-methodology/pretraining-strategies.md).
 
 ## U
 
