@@ -55,7 +55,24 @@ L(θ) = 𝔼 [ min( r(θ) · A,  clip(r(θ), 1−ε, 1+ε) · A ) ]
 
 Walkthrough, term by term: r(θ) is the ratio between the new policy's probability of taking a given action and the old policy's probability of the same action — a value near 1 means the policy hasn't changed much for this action, a value far from 1 means it has changed a lot. A is the advantage estimate (as in actor-critic methods above) — positive if the action turned out better than expected, negative if worse. The **clip** function restricts r(θ) to stay within a narrow band around 1 (e.g., [1−ε, 1+ε], with ε commonly around 0.2), and the **min** in the outer expression takes whichever is smaller: the unclipped objective, or the clipped one.
 
-Why this specific construction works: when the advantage A is positive (the action was good, so we want to increase its probability), the min-of-clipped-and-unclipped construction means that once r(θ) grows past 1+ε — i.e., once the policy has already increased this action's probability by "enough" — the clipped term caps further reward from pushing r(θ) even higher, removing the incentive to keep increasing the same action's probability indefinitely in one update. When A is negative (the action was bad), a symmetric logic discourages the policy from decreasing that action's probability by more than the clip range allows in one step. The net effect, without requiring TRPO's explicit KL-divergence constraint machinery, is a "soft" version of the same core idea: don't let one training step change the policy's behavior on any given action too drastically, because reward for doing so is capped once you've moved far enough.
+The clipping is easiest to see as a flat ceiling (for good actions) or floor (for bad ones) on how much one update is rewarded for changing the policy:
+
+```
+   objective                     A > 0 (good action: we want p↑)
+   contribution
+        │          ___________________  ← clip ceiling: no more reward for
+        │         /                       pushing p beyond 1+ε in one step
+        │        /
+        │       /   ← reward grows as we increase p, UNTIL the ceiling
+        │      /
+   ─────┼─────┼──────┼──────────► r(θ) = p_new / p_old
+        │   1−ε  1  1+ε
+        │
+        │  For A < 0 (bad action: we want p↓), the picture flips vertically:
+        │  a flat FLOOR stops rewarding pushing p below 1−ε in one step.
+```
+
+Why this specific construction works: when the advantage A is positive (the action was good, so we want to increase its probability), the min-of-clipped-and-unclipped construction means that once r(θ) grows past 1+ε — i.e., once the policy has already increased this action's probability by "enough" — the clipped term caps further reward from pushing r(θ) even higher, removing the incentive to keep increasing the same action's probability indefinitely in one update. When A is negative (the action was bad), a symmetric logic discourages the policy from decreasing that action's probability by more than the clip range allows in one step. The net effect, without requiring TRPO's explicit KL-divergence constraint machinery, is a "soft" version of the same core idea: don't let one training step change the policy's behavior on any given action too drastically, because reward for doing so is capped once you've moved far enough. The intuition to keep: PPO says "improve, but in small trusted steps" — it's the RL analogue of a small learning rate, enforced by capping the reward for over-eager moves rather than by capping the step size directly.
 
 **Why it mattered.** PPO achieves stability roughly comparable to TRPO's, using an objective simple enough to optimize with standard gradient-based methods (no separate constrained-optimization solver needed), which made it dramatically easier to implement, tune, and scale — this combination of stability and simplicity is exactly why PPO became the default RL algorithm choice across a very wide range of applications, very much including the RL stage of classic RLHF (see [rlhf-and-alignment.md](../05-training-methodology/rlhf-and-alignment.md)), where the "old policy" is the model's behavior before an update and the "new policy" is its behavior after, and the advantage estimate is derived from the reward model's score (adjusted by the KL penalty against the reference SFT model, as covered in that file).
 
