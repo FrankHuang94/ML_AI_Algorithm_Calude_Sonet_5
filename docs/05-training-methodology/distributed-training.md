@@ -2,6 +2,29 @@
 
 Training a frontier-scale model requires spreading the work across hundreds to tens of thousands of accelerators (GPUs/TPUs) simultaneously — a single accelerator, however powerful, has neither enough memory to hold a modern large model plus its training state, nor enough raw compute to train it in a reasonable amount of time. This file covers the major strategies for splitting a training job across many devices, and the communication costs that come with doing so.
 
+The three core strategies answer three different "what won't fit / what's too slow" problems, and it's clearest to see them side by side — what gets *split* across devices differs in each:
+
+```
+ DATA PARALLELISM          TENSOR PARALLELISM         PIPELINE PARALLELISM
+ (model fits; want          (one layer too big         (model too deep to fit;
+  to go faster)              for one device)            split it by layers)
+
+ GPU1: [whole model]        GPU1: [left half           GPU1: [layers 1-8]
+       sees batch rows 1-4         of each layer]       GPU2: [layers 9-16]
+ GPU2: [whole model]        GPU2: [right half          GPU3: [layers 17-24]
+       sees batch rows 5-8         of each layer]       GPU4: [layers 25-32]
+        │                          │                     data flows through
+   average gradients          combine partial            like an assembly line:
+   across GPUs                 results within             GPU1 → GPU2 → GPU3 → GPU4
+   each step                   each layer
+
+ splits: the DATA           splits: each WEIGHT        splits: the LAYERS
+ (whole model copied)        MATRIX (needs fast          (needs less-frequent
+                             within-node links)          cross-device handoffs)
+```
+
+At frontier scale these are *combined* (often called 3D parallelism): pipeline-split the model across nodes, tensor-split each node's layers across its tightly-linked GPUs, and data-parallel-replicate the whole arrangement to use more machines. ZeRO/FSDP (below) then attack a fourth axis — the redundant optimizer state — orthogonally to all three.
+
 ## Data parallelism
 
 **Name & definition.** Data parallelism replicates the *entire* model on every accelerator, and splits the training data (each mini-batch) across them — every device processes a different slice of the batch using an identical copy of the model, and the resulting gradients are averaged across all devices before each parameter update.
