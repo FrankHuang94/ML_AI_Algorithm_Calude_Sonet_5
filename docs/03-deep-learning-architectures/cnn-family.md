@@ -12,7 +12,23 @@ Convolutional Neural Networks (CNNs) are the architecture family that made deep 
 output[i, j] = Σ_m Σ_n  input[i+m, j+n] · filter[m, n]
 ```
 
-Walkthrough: at each position (i, j), you multiply the filter's weights element-wise against the corresponding patch of the input and sum the result into a single output value, then slide the filter over by one (or more) pixels and repeat. Critically, the *same* filter weights are reused at every position — this is called **weight sharing**, and it's the key idea that fixes both problems above: the parameter count for one filter is just its size (e.g., 9 weights for a 3×3 filter) regardless of image size, and because the same filter is applied everywhere, a pattern the filter learns to detect (like a vertical edge) is detected wherever it appears in the image, not just in one fixed location. A convolutional layer typically learns many filters in parallel (e.g., 64 different 3×3 filters), each producing its own output "channel," so the layer can detect many different local patterns simultaneously.
+Walkthrough: at each position (i, j), you multiply the filter's weights element-wise against the corresponding patch of the input and sum the result into a single output value, then slide the filter over by one (or more) pixels and repeat. Here it is concretely — a 3×3 "vertical edge detector" filter sliding over one patch of an image:
+
+```
+   Image patch          Filter (vertical         Element-wise
+   (pixel values)        edge detector)           multiply & sum
+   ┌───┬───┬───┐         ┌────┬───┬────┐
+   │ 0 │ 0 │ 9 │         │ -1 │ 0 │ +1 │          (0·-1)+(0·0)+(9·+1)
+   ├───┼───┼───┤    ⊛    ├────┼───┼────┤    =     +(0·-1)+(0·0)+(9·+1)   =  +27
+   │ 0 │ 0 │ 9 │         │ -1 │ 0 │ +1 │          +(0·-1)+(0·0)+(9·+1)
+   ├───┼───┼───┤         ├────┼───┼────┤
+   │ 0 │ 0 │ 9 │         │ -1 │ 0 │ +1 │          → large positive = "edge found here"
+   └───┴───┴───┘         └────┴───┴────┘
+   (dark left,           (fires on left-to-        A flat patch (all same value)
+    bright right)         right brightness jumps)   would sum to ≈ 0 — no edge.
+```
+
+The filter outputs a big number wherever the image locally matches its pattern (here, a dark-to-bright vertical transition) and near-zero where it doesn't. Slide this same filter across the whole image and you get a "map" of everywhere that edge appears. Critically, the *same* filter weights are reused at every position — this is called **weight sharing**, and it's the key idea that fixes both problems above: the parameter count for one filter is just its size (e.g., 9 weights for a 3×3 filter) regardless of image size, and because the same filter is applied everywhere, a pattern the filter learns to detect (like a vertical edge) is detected wherever it appears in the image, not just in one fixed location. A convolutional layer typically learns many filters in parallel (e.g., 64 different 3×3 filters), each producing its own output "channel," so the layer can detect many different local patterns simultaneously. And crucially, these filters are *learned*, not hand-designed — the edge detector above is illustrative, but in a trained network the filters emerge from data (early layers reliably learn edge- and color-detectors like this one; later layers learn detectors for textures, object parts, and eventually whole objects).
 
 **Pooling.** A pooling layer downsamples its input by summarizing small regions into a single value — most commonly **max pooling** (take the maximum value in each small region, e.g., each 2×2 block) or **average pooling** (take the mean). Pooling has no learned weights; it's a fixed summarization operation. Walkthrough: pooling reduces the spatial resolution of the data flowing through the network (e.g., a 2×2 max-pool halves both height and width), which reduces compute for subsequent layers and adds a degree of **translation invariance** (a small shift in where a feature appears in the input has less effect on the pooled output, since the pooling operation summarizes over a local neighborhood rather than reading one exact pixel location).
 

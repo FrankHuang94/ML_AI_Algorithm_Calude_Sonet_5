@@ -57,12 +57,14 @@ Files in this repository define jargon inline on first use with a short parenthe
 
 ## F
 
+- **Feedforward network (FFN)** — the position-wise two-layer sub-network in each Transformer block (applied identically to every token); holds most of a block's parameters and is what Mixture-of-Experts replaces with many experts. Covered in: [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md).
 - **Few-shot (learning/prompting)** — giving a model a handful (typically 1-100) of example input/output pairs at inference time (in the prompt, not via weight updates) and expecting it to generalize the pattern to a new input. Contrast with zero-shot. Covered in: [scope-and-methodology.md](scope-and-methodology.md).
 - **FLOPs (floating-point operations)** — a measure of computational cost; used to quantify how much compute a model requires to process a token, train, or run inference. Covered in: [mixture-of-experts.md](../03-deep-learning-architectures/mixture-of-experts.md).
 
 ## G
 
 - **Generalization** — how well a model performs on data it did not train on, as opposed to how well it merely memorized its training set. The entire point of regularization is to improve this. Covered in: [regularization-techniques.md](../01-foundations/regularization-techniques.md).
+- **GELU / SwiGLU** — smooth (GELU) and gated (SwiGLU) activation functions used in the feedforward sub-layers of modern Transformers, in place of the older ReLU. Covered in: [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md).
 - **Gradient** — the vector of partial derivatives of the loss function with respect to every model parameter; points in the direction of steepest increase of the loss, so training steps move opposite to it. Covered in: [optimization-algorithms.md](../01-foundations/optimization-algorithms.md).
 - **Gradient clipping** — rescaling the gradient vector so its norm never exceeds a fixed threshold, to prevent a single abnormally large gradient from destabilizing training. Covered in: [optimization-algorithms.md](../01-foundations/optimization-algorithms.md).
 - **Gradient explosion** — a failure mode where gradients grow multiplicatively as they're backpropagated through many layers or time steps, producing enormous, destabilizing updates. Contrast with vanishing gradients. Covered in: [optimization-algorithms.md](../01-foundations/optimization-algorithms.md).
