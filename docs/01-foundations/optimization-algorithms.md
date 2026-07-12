@@ -2,6 +2,20 @@
 
 Every model in this repository — from a logistic regression to a trillion-parameter mixture-of-experts model — is trained the same fundamental way: define a **loss function** (a number that measures how wrong the model's predictions are; see [loss-functions.md](loss-functions.md)), then adjust the model's parameters to make that number smaller. Optimization algorithms are the "adjust the parameters" part. This file covers that family from first principles up through what's actually used to train frontier models in 2026.
 
+The whole family is best understood as a single idea — "step downhill on the loss" — with successive refinements bolted on to fix specific problems. The diagram below is the map for this entire file; each arrow is "…but that had a problem, so we added:".
+
+```mermaid
+flowchart TD
+    GD["Gradient descent<br/>(step opposite the gradient)"] -->|"noisy/slow;<br/>oscillates in valleys"| M["+ Momentum<br/>(average past gradients)"]
+    GD -->|"one global step size<br/>fits sparse + dense params badly"| A["+ Adaptive per-parameter<br/>step sizes (Adagrad → RMSProp)"]
+    M --> ADAM["Adam<br/>(momentum + adaptive scaling)"]
+    A --> ADAM
+    ADAM -->|"weight decay interacts<br/>badly with adaptivity"| ADAMW["AdamW<br/>(decoupled weight decay)"]
+    ADAMW -->|"optimizer state is<br/>~2x the model in memory"| LION["Lion / Muon<br/>(cheaper state, newer)"]
+    ADAMW -->|"very large batches<br/>need per-layer scaling"| LAMB["LAMB / LARS"]
+    ADAMW -.->|"curvature-aware,<br/>usually too expensive"| SO["Second-order<br/>(L-BFGS, natural gradient, Sophia)"]
+```
+
 ## Gradient descent: the base case
 
 **Definition.** Gradient descent is an iterative algorithm for minimizing a function by repeatedly stepping in the direction that decreases it fastest.
@@ -17,6 +31,14 @@ Every model in this repository — from a logistic regression to a trillion-para
 Here **η (eta)** is the **learning rate** — a small positive number controlling how big a step you take. This single line is the mechanical core of almost all of deep learning training. Everything else in this file is a refinement of it.
 
 Walkthrough: at every step, you compute how the loss would change if you nudged each parameter slightly, then you nudge every parameter a little bit in the direction that reduces the loss, scaled by η. Too large an η and you overshoot the minimum and can diverge; too small and training crawls.
+
+**A concrete one-step example.** It's worth grounding this in actual numbers once, since the equation hides how simple each step is. Suppose the entire "model" is a single parameter θ and the loss is L(θ) = θ² (a parabola with its minimum at θ = 0). The gradient is ∇L = 2θ. Start at θ = 5, with η = 0.1:
+
+- Step 1: gradient = 2·5 = 10; update θ ← 5 − 0.1·10 = 4.0. Loss went from 25 to 16.
+- Step 2: gradient = 2·4 = 8; update θ ← 4 − 0.1·8 = 3.2. Loss now 10.24.
+- Step 3: gradient = 2·3.2 = 6.4; θ ← 3.2 − 0.64 = 2.56. Loss now 6.55.
+
+Each step moves θ toward 0 (the minimum), and the steps automatically get *smaller* as the gradient shrinks near the bottom — you don't need to slow down manually, the gradient does it for you. Now imagine this happening not for one parameter but for billions simultaneously, each with its own partial derivative, and you have the mechanical heart of training every model in this repository. Note also what would happen with η = 1.1 instead: step 1 would give θ ← 5 − 1.1·10 = −6, *further* from the minimum than where you started — this is divergence from too large a learning rate, made concrete.
 
 There are three variants, differing only in how much data you use to estimate ∇L before each step:
 
@@ -42,6 +64,8 @@ v ← β·v + (1 − β)·∇L(θ)
 ```
 
 β (beta, typically ~0.9) controls how much of the previous velocity carries over. Walkthrough: instead of reacting only to the current gradient, you keep a "memory" of recent gradient directions and blend it with the new one. If gradients keep pointing roughly the same way, velocity builds up and you move faster in that direction — like a ball rolling downhill and gaining speed. If the gradient direction flips step to step (a common pattern in narrow valleys of the loss landscape), the oscillations partially cancel out, damping the zig-zag that plain SGD exhibits in those regions.
+
+A note on formulations, since it trips people up when they compare textbook equations to actual code: the form above (with the `(1 − β)` factor) is the *exponential-moving-average* version, where velocity is a true weighted average of past gradients. The *classical* Polyak form used by, for example, PyTorch's built-in SGD optimizer omits that factor — `v ← β·v + ∇L(θ)` — so velocity accumulates rather than averages, and the effective step size is larger by roughly a factor of 1/(1−β). The two are equivalent up to a rescaling of the learning rate, which is why both appear interchangeably in the literature; don't be thrown when the equation in a paper doesn't exactly match the one in your framework.
 
 **Why it mattered.** Plain SGD is slow and oscillatory in loss landscapes with steep curvature in one direction and shallow curvature in another (a very common shape for neural network losses). Momentum smooths this out and speeds up convergence substantially without extra gradient computations.
 
@@ -101,6 +125,8 @@ v̂ ← v / (1 − β₂ᵗ)                        (bias correction)
 
 Typical defaults: β₁ = 0.9, β₂ = 0.999. Walkthrough: m tracks the recent average *direction* of the gradient (momentum); v tracks the recent average *magnitude squared* of the gradient per parameter (adaptive scaling, like RMSProp). Dividing m̂ by √v̂ means: move in the smoothed gradient direction, but take smaller steps for parameters whose gradients have recently been large in magnitude (they're already changing fast, so be more careful) and larger relative steps for parameters with small, consistent gradients. The bias-correction terms (dividing by 1 − βᵗ, where t is the step count) exist because m and v are initialized at zero and are therefore biased toward zero in early steps — the correction compensates for that early-training artifact.
 
+**The memory cost, made concrete.** Notice that Adam keeps *two* extra full-size buffers, m and v — one number each, per model parameter. This is the "optimizer state" referenced throughout this repository, and its size is easy to underestimate: for a model with N parameters trained in mixed precision, a common accounting is that the parameters themselves, their gradients, and Adam's two moment buffers together require on the order of 16 bytes per parameter (the exact figure depends on precision choices, but the key point is the multiplier). For a 70-billion-parameter model that's well over a terabyte of memory just for training state — far more than the model's own weights — which is precisely why [distributed-training.md](../05-training-methodology/distributed-training.md) spends so much effort sharding this state across devices, and why the cheaper-state optimizers below (Lion, Muon) are attractive at frontier scale.
+
 **Why it mattered.** Adam combines the two most useful properties from the prior decade of optimizer research (directional smoothing from momentum, per-parameter scaling from RMSProp) into one optimizer that works well "out of the box" across a very wide range of architectures and problems with minimal tuning. This made it the default choice for most of the 2015-2020 deep learning boom, and its descendant (AdamW, below) remains the default for training large language models as of 2026.
 
 **Current status.** AdamW (below) has effectively replaced plain Adam for large-scale training, but Adam is still extremely common in smaller-scale and non-LLM deep learning work.
@@ -147,6 +173,16 @@ Walkthrough: every parameter moves by exactly the same magnitude per step (η) i
 
 **Current status.** Reported speedups over AdamW in the original paper's pretraining experiments; adoption outside the original authors' benchmarks is limited as of 2026 — treat as promising but not (yet) an industry default.
 
+### Muon
+
+**Origin.** Jordan et al. (2024), with subsequent scaling and refinement work through 2024-2025.
+
+**Core mechanism (brief).** Muon is designed specifically for the 2D weight *matrices* inside a network (the large matrices in attention and feedforward layers — see [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md)), and treats their updates as a matrix rather than as a flat bag of independent numbers. It takes a momentum-averaged gradient and applies an **orthogonalization** step (approximated cheaply via a few iterations of a matrix polynomial, rather than an expensive exact decomposition) before using it as the update. Intuitively, this rebalances the update so that it pushes with more uniform strength across all the different "directions" the matrix can change in, rather than letting a few dominant directions absorb most of the step — which empirically lets training take more productive steps per unit of compute. Muon is typically paired with a standard optimizer like AdamW for the non-matrix parameters (embeddings, biases, normalization scales), which don't have the same 2D structure to exploit.
+
+**Why it's worth including.** Muon is one of the first optimizers since Adam to see genuine, widely-reported traction for large-scale language model pretraining rather than remaining a benchmark curiosity — reported to improve compute efficiency at meaningful scale while also using less optimizer-state memory than Adam (it tracks only a momentum buffer for the matrices it handles). As of 2026 it represents the most credible recent challenger to AdamW's long dominance, though AdamW remains the safe default and Muon's track record is still much shorter.
+
+**Current status.** Emerging; real and growing adoption for large-scale pretraining, but not yet the default, and still accumulating the years of broad validation AdamW has.
+
 ### LAMB and LARS — large-batch training
 
 **Origin.** LARS: You, Gitman, and Ginsburg (2017); LAMB: You et al. (2019, applied specifically to BERT-scale pretraining).
@@ -165,6 +201,9 @@ The learning rate η is not usually held constant through training — nearly al
 - **Cosine annealing** — smoothly decay η following a cosine curve from an initial value down to (near) zero over the course of training. Widely used for LLM pretraining because it avoids the abrupt jumps of step decay and its shape is a single, easy-to-tune parameter (total steps).
 - **Linear warmup** — start η at (or near) zero and ramp it up linearly over the first portion of training (often 1-5% of total steps) before the main schedule kicks in. This matters because early in training, gradients (and Adam's variance estimates in particular) are noisy and poorly calibrated; jumping straight to a large η can cause the run to diverge before it stabilizes.
 - **Warmup + decay combinations** — the standard recipe for LLM pretraining today is linear (or sometimes shorter, aggressive) warmup followed by cosine decay (or, increasingly, a simpler linear decay) to a small fraction of the peak learning rate. This combined shape — ramp up, hold or gently decay, then decay more steeply — is close to universal across major pretraining runs as of 2026.
+- **Warmup-Stable-Decay (WSD)** — a newer, increasingly popular variant that warms up, then holds the learning rate at a *constant* high value for the bulk of training, then decays sharply only at the very end. Its practical appeal is that the "stable" phase produces a usable checkpoint at any point along the way (you haven't committed to a fixed total training length the way cosine annealing does, which bakes the endpoint into the curve's shape), and you can branch off a short decay phase whenever you decide to stop — convenient when the final training budget isn't fixed in advance, and when you want to run and evaluate multiple candidate stopping points from one long stable run.
+
+A quick intuition for *why* schedules matter at all: the learning rate controls a tension between exploration and settling. Early on, you want relatively large steps to move quickly across the loss landscape toward a good region (but not so large you diverge — hence warmup easing you in). Late in training, you want small steps to settle precisely into a good minimum rather than bouncing around it (hence decay). The various schedules are just different-shaped answers to "how fast should I transition from the first regime to the second?"
 
 ## Gradient clipping
 
@@ -192,6 +231,7 @@ The learning rate η is not usually held constant through training — nearly al
 | AdamW | 2019 | Decoupled weight decay from adaptive gradient step | Dominant default for LLM training |
 | Lion | 2023 | Sign-based update, half the optimizer memory of Adam | Real but minority adoption |
 | Sophia | 2023 | Lightweight second-order curvature estimate | Promising, limited adoption |
+| Muon | 2024 | Orthogonalized matrix-aware updates, less state than Adam | Emerging; most credible recent AdamW challenger |
 | LAMB / LARS | 2017 / 2019 | Layer-wise learning rate rescaling for large batches | Standard for large-batch pretraining phases |
 | L-BFGS / Natural Gradient | Pre-deep-learning | True second-order/curvature-aware steps | Rare at scale — cost is prohibitive |
 
@@ -214,6 +254,7 @@ The learning rate η is not usually held constant through training — nearly al
 - Loshchilov, Hutter, "Decoupled Weight Decay Regularization" (2019)
 - Chen et al., "Symbolic Discovery of Optimization Algorithms" (2023) [Lion]
 - Liu et al., "Sophia: A Scalable Stochastic Second-Order Optimizer for Language Model Pre-training" (2023)
+- Jordan et al., "Muon: An optimizer for the hidden layers of neural networks" (2024) [Muon; reported and refined in subsequent scaling work]
 - You, Gitman, Ginsburg, "Large Batch Training of Convolutional Networks" (2017) [LARS]
 - You et al., "Large Batch Optimization for Deep Learning: Training BERT in 76 minutes" (2019) [LAMB]
 - Amari, "Natural Gradient Works Efficiently in Learning" (1998)
