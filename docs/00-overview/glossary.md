@@ -36,6 +36,7 @@ Files in this repository define jargon inline on first use with a short parenthe
 - **Catastrophic forgetting** — when training a model on new data degrades or erases previously-learned capabilities, a core obstacle to practical continual/online learning. Covered in: [open-problems.md](../09-roadmaps/open-problems.md).
 - **Causal masking** — in self-attention, blocking each position from attending to later positions (by setting their scores to negative infinity before softmax) so a model can't "see the future" it's supposed to predict. Covered in: [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md).
 - **Compute-optimal** — the allocation of a fixed training compute budget between model size and data size that minimizes loss; the Chinchilla paper's central finding. Covered in: [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md).
+- **Credit assignment problem** — the RL difficulty of determining which earlier actions deserve credit (or blame) for a reward that arrives much later; nearly every RL algorithm is a different answer to it. Covered in: [value-based-methods.md](../07-reinforcement-learning/value-based-methods.md).
 - **Cross-attention** — an attention variant where queries come from one sequence (e.g., a decoder) and keys/values come from another (e.g., an encoder's output), letting one sequence look back at another. Covered in: [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md).
 - **Cross-entropy** — a loss function measuring the gap between a predicted probability distribution and the true target distribution; equals the true distribution's entropy plus the KL divergence between true and predicted. The standard loss for classification and language modeling. Covered in: [loss-functions.md](../01-foundations/loss-functions.md).
 
@@ -161,6 +162,7 @@ Files in this repository define jargon inline on first use with a short parenthe
 
 - **Temperature** — a scalar dividing logits before softmax during sampling; below 1 sharpens (more deterministic) a model's output distribution, above 1 flattens it (more random/diverse). Covered in: [autoregressive-generation.md](../04-generative-models/autoregressive-generation.md).
 - **Test-time compute** — computation spent at inference time (e.g., generating longer intermediate reasoning) to improve output quality, as a scaling axis distinct from pretraining compute. Covered in: [long-term-outlook.md](../09-roadmaps/long-term-outlook.md).
+- **Temporal-difference (TD) error** — in RL, the gap between a value estimate and a better "target" estimate (reward plus discounted next-state value); the signal that drives Q-learning and value-model updates. Covered in: [value-based-methods.md](../07-reinforcement-learning/value-based-methods.md).
 - **Token** — a chunk of text (often a word or sub-word piece) that a language model treats as a single unit of input/output. Covered in: [autoregressive-generation.md](../04-generative-models/autoregressive-generation.md).
 - **Tokenizer / BPE (Byte-Pair Encoding)** — the component (and dominant algorithm) that converts raw text into the fixed subword vocabulary a model consumes, by greedily merging frequent adjacent pairs into single tokens. Covered in: [pretraining-strategies.md](../05-training-methodology/pretraining-strategies.md).
 
@@ -170,6 +172,7 @@ Files in this repository define jargon inline on first use with a short parenthe
 
 ## V
 
+- **Value model / critic** — in RL, a learned estimator of how good a state (or state-action) is in terms of expected future reward; used by actor-critic methods and PPO, and removed by GRPO. Covered in: [policy-gradient-methods.md](../07-reinforcement-learning/policy-gradient-methods.md).
 - **VQ-VAE (Vector-Quantized VAE)** — a VAE variant with a discrete latent (each latent position is snapped to the nearest entry in a learned codebook), enabling images/audio to be modeled as token sequences by autoregressive Transformers. Covered in: [vaes.md](../04-generative-models/vaes.md).
 
 ## W
