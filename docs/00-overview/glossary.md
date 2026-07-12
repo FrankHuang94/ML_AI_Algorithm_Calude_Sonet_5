@@ -65,6 +65,7 @@ Files in this repository define jargon inline on first use with a short parenthe
 - **Gradient clipping** — rescaling the gradient vector so its norm never exceeds a fixed threshold, to prevent a single abnormally large gradient from destabilizing training. Covered in: [optimization-algorithms.md](../01-foundations/optimization-algorithms.md).
 - **Gradient explosion** — a failure mode where gradients grow multiplicatively as they're backpropagated through many layers or time steps, producing enormous, destabilizing updates. Contrast with vanishing gradients. Covered in: [optimization-algorithms.md](../01-foundations/optimization-algorithms.md).
 - **Gradient vanishing** — the opposite failure mode from gradient explosion: gradients shrink toward zero as they propagate backward through many layers/time steps, so early layers stop learning. Covered in: [rnn-lstm-gru.md](../03-deep-learning-architectures/rnn-lstm-gru.md).
+- **GroupNorm (Group Normalization)** — a normalization scheme that normalizes over a group of feature channels per example; batch-independent like LayerNorm, and common in diffusion-model U-Nets. Covered in: [regularization-techniques.md](../01-foundations/regularization-techniques.md).
 - **Guidance scale** — in diffusion models, a tunable strength parameter controlling how strongly generation is pushed toward a conditioning signal (e.g., a text prompt) via classifier-free guidance. Covered in: [diffusion-models.md](../04-generative-models/diffusion-models.md).
 
 ## H
@@ -72,9 +73,11 @@ Files in this repository define jargon inline on first use with a short parenthe
 - **Hallucination** — when a model generates fluent, confident-sounding output that is factually incorrect; a consequence of training objectives that optimize for plausibility rather than verified truth. Covered in: [open-problems.md](../09-roadmaps/open-problems.md).
 - **Hessian** — the matrix of second derivatives of a function; describes the local curvature of the loss landscape. Too large (parameters²) to compute directly for deep networks, which is why most training uses only first-derivative (gradient) information. Covered in: [optimization-algorithms.md](../01-foundations/optimization-algorithms.md).
 - **Hidden state** — a vector maintained and updated by a recurrent network at each time step, summarizing everything relevant the network has seen so far in a sequence. Covered in: [rnn-lstm-gru.md](../03-deep-learning-architectures/rnn-lstm-gru.md).
+- **Huber loss** — a regression loss that behaves like MSE for small errors and like MAE for large ones, combining smooth gradients with robustness to outliers; used in robust regression and DQN value targets. Covered in: [loss-functions.md](../01-foundations/loss-functions.md).
 
 ## I
 
+- **Implicit regularization** — regularizing effects that arise as a side effect of standard training choices (SGD gradient noise, early stopping, limited precision) rather than being deliberately added; part of why very large models overfit less than their parameter count suggests. Covered in: [regularization-techniques.md](../01-foundations/regularization-techniques.md).
 - **Inductive bias** — a built-in assumption baked into a model architecture (rather than learned from data) that makes certain patterns easier to learn; e.g., convolution's assumption that nearby pixels are related. Covered in: [cnn-family.md](../03-deep-learning-architectures/cnn-family.md).
 - **Inductive vs. transductive learning** — inductive models generalize to new, unseen nodes/graphs/examples; transductive models are defined only over the fixed data seen during training and don't naturally extend beyond it. Covered in: [graph-neural-networks.md](../03-deep-learning-architectures/graph-neural-networks.md).
 - **Interpretability** — the degree to which a model's internal computation and behavior can be explained in human-understandable terms; a major open problem for large neural networks. Covered in: [open-problems.md](../09-roadmaps/open-problems.md).
@@ -100,12 +103,15 @@ Files in this repository define jargon inline on first use with a short parenthe
 - **Minimax game/objective** — an optimization setup where two parties have directly opposing goals (one maximizes, one minimizes the same expression); the training framework behind GANs. Covered in: [gans.md](../04-generative-models/gans.md).
 - **Mixture of Experts (MoE) / router** — an architectural pattern where many parallel sub-networks ("experts") exist, but a small router network selects only a few to process each token, decoupling total parameter count from per-token compute cost. Covered in: [mixture-of-experts.md](../03-deep-learning-architectures/mixture-of-experts.md).
 - **Mode collapse** — a GAN failure mode where the generator produces only a small, non-diverse set of outputs that happen to fool the current discriminator, rather than covering the full diversity of the true data distribution. Covered in: [gans.md](../04-generative-models/gans.md).
+- **Mode-covering vs. mode-seeking** — two behaviors that arise from the two directions of KL divergence: mode-covering (forward KL) spreads probability to cover all of the target distribution; mode-seeking (reverse KL) locks onto one mode and ignores others. Covered in: [loss-functions.md](../01-foundations/loss-functions.md).
 - **Model collapse** — a degradation in quality/diversity that can occur when models are trained iteratively on data generated by other models, without sufficient grounding in real, diverse data. Covered in: [curriculum-and-data-strategies.md](../05-training-methodology/curriculum-and-data-strategies.md).
 - **Model-free (vs. model-based) RL** — model-free methods (Q-learning, DQN, policy gradients) learn directly from experience without an explicit model of the environment's dynamics; model-based methods learn or use such a model. Covered in: [value-based-methods.md](../07-reinforcement-learning/value-based-methods.md); see also [model-based-rl.md](../07-reinforcement-learning/model-based-rl.md).
 - **Momentum** — an optimization technique that accumulates a running average of past gradients and steps in that averaged direction rather than the raw current gradient, smoothing the trajectory. Covered in: [optimization-algorithms.md](../01-foundations/optimization-algorithms.md).
+- **Muon** — a 2024 optimizer that applies orthogonalized, matrix-aware updates to a network's 2D weight matrices; an emerging challenger to AdamW for large-scale pretraining with lower optimizer-state memory. Covered in: [optimization-algorithms.md](../01-foundations/optimization-algorithms.md).
 
 ## O
 
+- **Optimizer state** — the extra per-parameter buffers an optimizer maintains (e.g., Adam's two moment estimates); at LLM scale this can exceed the size of the model's own weights and is a major target of memory-sharding techniques. Covered in: [optimization-algorithms.md](../01-foundations/optimization-algorithms.md).
 - **Over-parameterized** — describes a network with more parameters than strictly necessary for its learned function; the empirical basis for pruning (many weights can be removed with little accuracy loss). Covered in: [pruning-and-distillation.md](../06-inference-optimization/pruning-and-distillation.md).
 - **Overfitting** — when a model fits the training data (including its noise/quirks) so closely that it performs worse on new, unseen data than a less-fitted model would. Contrast with underfitting. Covered in: [regularization-techniques.md](../01-foundations/regularization-techniques.md).
 
@@ -118,6 +124,7 @@ Files in this repository define jargon inline on first use with a short parenthe
 
 ## Q
 
+- **QK-norm** — normalizing the query and key vectors inside attention before computing scores, used in large transformers to keep attention logits from growing to extreme magnitudes and destabilizing training. Covered in: [regularization-techniques.md](../01-foundations/regularization-techniques.md).
 - **Quantization** — reducing the numerical precision used to represent model weights/activations (e.g., from 16-bit to 4-bit), shrinking memory footprint and often speeding up inference at some accuracy cost. Covered in: [quantization.md](../06-inference-optimization/quantization.md).
 - **Query, Key, Value (Q/K/V)** — the three learned projections of each position's input in self-attention: the query represents what a position is looking for, the key represents what a position advertises, and the value represents the information a position offers if attended to. Covered in: [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md).
 
@@ -153,7 +160,9 @@ Files in this repository define jargon inline on first use with a short parenthe
 
 ## W
 
+- **Warmup** — starting training with a small learning rate and ramping it up over the first fraction of steps, to avoid instability while gradient/variance estimates are still noisy. Covered in: [optimization-algorithms.md](../01-foundations/optimization-algorithms.md).
 - **World model** — a learned or given representation of how an environment evolves (next state and reward given current state and action), used for planning or generating simulated experience. Covered in: [model-based-rl.md](../07-reinforcement-learning/model-based-rl.md).
+- **WSD (Warmup-Stable-Decay) schedule** — a learning-rate schedule that warms up, holds a constant high rate for most of training, then decays sharply at the end; convenient when the total training length isn't fixed in advance. Covered in: [optimization-algorithms.md](../01-foundations/optimization-algorithms.md).
 
 ## Z
 
