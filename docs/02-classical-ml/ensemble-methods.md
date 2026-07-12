@@ -2,6 +2,27 @@
 
 An ensemble combines many individually weak or imperfect models into one stronger predictor. This family — particularly gradient-boosted decision trees — is the single most important piece of context for understanding why deep learning has *not* taken over tabular data (data organized in rows/columns with a mix of numeric and categorical features, like a spreadsheet or a database table), even in 2026.
 
+Almost everything in this file is one of two philosophies, and the difference between them is the single most important thing to understand here: **bagging** trains many models *in parallel and independently*, then averages them to cancel out their random errors; **boosting** trains many models *in sequence*, each one focused on fixing the mistakes the previous ones made. The diagram makes the contrast concrete:
+
+```mermaid
+flowchart LR
+    subgraph BAG["BAGGING (parallel, reduces variance)"]
+    D1[Data sample 1] --> T1[Tree 1]
+    D2[Data sample 2] --> T2[Tree 2]
+    D3[Data sample 3] --> T3[Tree 3]
+    T1 --> AVG[Average / vote<br/>all trees equally]
+    T2 --> AVG
+    T3 --> AVG
+    end
+    subgraph BOOST["BOOSTING (sequential, reduces bias)"]
+    B1[Tree 1] -->|"look at its<br/>errors"| B2[Tree 2 fixes them]
+    B2 -->|"look at remaining<br/>errors"| B3[Tree 3 fixes those]
+    B3 --> SUM[Weighted sum<br/>of all trees]
+    end
+```
+
+The two philosophies even target different failure modes: bagging mainly reduces **variance** (a model's sensitivity to which particular data sample it saw), which is why it's applied to high-variance base learners like deep decision trees; boosting mainly reduces **bias** (systematic error from models being too simple), which is why it's applied to weak, high-bias base learners like shallow "stumps." Random Forest is the flagship bagging method; XGBoost/LightGBM/CatBoost are the flagship boosting methods. Keep this split in mind — every entry below is a refinement of one side or the other.
+
 ## Bagging (Bootstrap Aggregating)
 
 **Name & definition.** Bagging trains many copies of the same model type on different random resamples of the training data (sampled with replacement — a "bootstrap sample") and averages (regression) or majority-votes (classification) their predictions.
