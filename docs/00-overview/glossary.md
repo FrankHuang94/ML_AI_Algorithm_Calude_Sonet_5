@@ -42,6 +42,8 @@ Files in this repository define jargon inline on first use with a short parenthe
 ## D
 
 - **Data leakage** — when information about the target variable inadvertently leaks into features during preprocessing, inflating training/validation performance in a way that doesn't generalize. Covered in: [ensemble-methods.md](../02-classical-ml/ensemble-methods.md).
+- **Decision boundary** — the dividing surface in feature space where a classifier switches from predicting one class to another; its shape (straight line, staircase, smooth curve) characterizes the classifier. Covered in: [supervised-learning.md](../02-classical-ml/supervised-learning.md).
+- **Discriminative vs. generative model** — a discriminative model learns the boundary between classes directly (P(class\|features)); a generative model models what each class's data looks like (P(features\|class)) and applies Bayes' rule to classify. Covered in: [supervised-learning.md](../02-classical-ml/supervised-learning.md).
 - **Degeneration** — a failure mode of likelihood-maximizing text decoding (greedy/beam search) producing repetitive, generic, or looping output rather than varied, human-like text. Covered in: [autoregressive-generation.md](../04-generative-models/autoregressive-generation.md).
 - **Distillation (knowledge distillation)** — training a smaller "student" model to reproduce a larger "teacher" model's output distribution, producing a smaller, cheaper model that often outperforms one trained from scratch on hard labels alone. Covered in: [pruning-and-distillation.md](../06-inference-optimization/pruning-and-distillation.md).
 
