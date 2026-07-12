@@ -10,6 +10,23 @@ Attention's quadratic cost in sequence length (see [transformer-architecture.md]
 
 **The KV cache fix.** Instead, store (cache) each position's key and value vectors the first time they're computed, and simply reuse them for every subsequent generation step, computing only the new query, key, and value for the newest token at each step. This turns the redundant, ever-growing recomputation into a linear amount of new work per step (compute K/V once for the new token, attend the new query against all cached K/V) — a large practical speedup for autoregressive generation.
 
+The waste (and the fix) are easiest to see laid out step by step — capitals = freshly computed this step, lowercase = reused from cache:
+
+```
+   Generating "The cat sat on":
+
+   WITHOUT cache (recomputes everything, every step):    WITH KV cache (compute only the new one):
+   step 1  "The"            → K/V for: [THE]              → compute & store K/V[THE]
+   step 2  "The cat"        → K/V for: [THE  CAT]         → reuse the, compute & store K/V[CAT]
+   step 3  "The cat sat"    → K/V for: [THE  CAT  SAT]    → reuse the,cat, compute K/V[SAT]
+   step 4  "...sat on"      → K/V for: [THE CAT SAT ON]   → reuse the,cat,sat, compute K/V[ON]
+                              ^^^ recomputes the same           ^^^ each token's K/V computed
+                              early tokens over and over        exactly ONCE, then reused
+                              (work ∝ n² total)                 (work ∝ n total)
+```
+
+The cache trades memory for compute: you never recompute a token's keys/values, at the cost of storing them all. For a long conversation that trade is overwhelmingly worth it on compute — but the stored cache itself becomes the new bottleneck, which is what the rest of this file is about.
+
 **What it costs in memory.** The KV cache isn't free — it has to be stored somewhere, and its size grows linearly with sequence length, and also scales with the number of attention heads, the size of each head, the number of layers in the model, and the batch size (how many sequences are being generated simultaneously). For long contexts and/or large batches, the KV cache can become a very large fraction of total GPU memory usage — in some regimes, larger than the model's own weights — which makes managing it efficiently a first-order concern for serving cost and throughput, directly connected to the batching decisions covered in [serving-and-batching.md](serving-and-batching.md).
 
 ## FlashAttention — I/O-aware attention
