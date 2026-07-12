@@ -25,7 +25,22 @@ Fine-tuning adapts a pretrained model (see [pretraining-strategies.md](pretraini
 h = W·x + ΔW·x = W·x + B·(A·x)
 ```
 
-Walkthrough: instead of learning a full d×d update matrix (which would have d² parameters), LoRA learns two much thinner matrices A and B, whose product approximates the update — this has only 2·d·r parameters, where r (the "rank" of the decomposition — typically a small number like 4, 8, or 16, versus d values that can be in the thousands) is chosen to be far smaller than d. This is the "low-rank" in the name: it assumes the *useful* update to a pretrained weight matrix for a given task doesn't need to explore the full space of possible d×d changes, but can be well-approximated by a much lower-dimensional (rank-r) update — an assumption that has held up well empirically across a wide range of fine-tuning tasks. At inference time, B·A can even be computed once and added directly to W, meaning a LoRA-adapted model can run with zero extra latency compared to the original model, if desired — or B·A can be kept separate and swapped out per task/customer, using the same frozen base weights W for many different LoRA adapters simultaneously.
+```
+   Full fine-tuning: update the whole      LoRA: freeze W, learn a thin B·A instead
+   d×d matrix (d² parameters)              (2·d·r parameters, r ≪ d)
+
+        ┌───────────────┐                     ┌───────────────┐    ┌─┐
+        │               │                     │               │    │ │ B  (d×r,
+        │   W  (train    │                     │   W  (FROZEN) │  + │ │     tall & thin)
+        │   all of it)   │                     │               │    │ │
+        │               │                     │               │    └─┘
+        └───────────────┘                     └───────────────┘    ┌──────┐
+         d² numbers to learn                  0 new here            └──────┘ A (r×d, short & wide)
+         (e.g. 4096×4096                                            2·d·r numbers
+          ≈ 16.7M per matrix)                                       (e.g. 4096×8×2 ≈ 66K — ~250× fewer)
+```
+
+Walkthrough: instead of learning a full d×d update matrix (which would have d² parameters), LoRA learns two much thinner matrices A and B, whose product approximates the update — this has only 2·d·r parameters, where r (the "rank" of the decomposition — typically a small number like 4, 8, or 16, versus d values that can be in the thousands) is chosen to be far smaller than d. The numbers in the sketch make the savings vivid: for a 4096×4096 matrix, full fine-tuning learns ~16.7M numbers; LoRA with rank 8 learns ~66K — roughly 250× fewer — per matrix. This is the "low-rank" in the name: it assumes the *useful* update to a pretrained weight matrix for a given task doesn't need to explore the full space of possible d×d changes, but can be well-approximated by a much lower-dimensional (rank-r) update — an assumption that has held up well empirically across a wide range of fine-tuning tasks. At inference time, B·A can even be computed once and added directly to W, meaning a LoRA-adapted model can run with zero extra latency compared to the original model, if desired — or B·A can be kept separate and swapped out per task/customer, using the same frozen base weights W for many different LoRA adapters simultaneously.
 
 **Why it mattered.** LoRA reduces the number of trainable parameters (and the optimizer state needed for them) by orders of magnitude relative to full fine-tuning — often well under 1% of the base model's parameter count — while empirically matching full fine-tuning's task performance closely in a wide range of settings. This made fine-tuning large models practical on dramatically less hardware, and made it practical to maintain many different task/customer-specific fine-tunes cheaply (as small LoRA adapter files layered on one shared base model) rather than many full model copies.
 
@@ -36,6 +51,10 @@ Walkthrough: instead of learning a full d×d update matrix (which would have d²
 **Core mechanism.** QLoRA combines LoRA with quantization (representing the frozen base model's weights using low-precision number formats — see [quantization.md](../06-inference-optimization/quantization.md) for the full mechanics — commonly 4-bit precision in QLoRA's case) — the frozen base weights are stored and used in quantized (compressed) form during fine-tuning, while the small LoRA adapter matrices A and B are still trained in normal higher precision. The paper also introduced supporting techniques (a specific 4-bit data type tuned for the typical distribution of neural network weights, and careful memory management for optimizer states) to keep this combination numerically stable despite the aggressive compression of the frozen base model.
 
 **Why it mattered.** By quantizing the (much larger) frozen base model while keeping the (much smaller) trainable LoRA parameters at full precision, QLoRA cut the memory required to fine-tune large models even further than LoRA alone — the paper's headline demonstration was fine-tuning a large model on a single consumer-grade GPU, a scale of accessibility that would have been unthinkable with full fine-tuning.
+
+### The broader LoRA family (DoRA and other refinements)
+
+LoRA has spawned a family of refinements worth being aware of, though the core idea is unchanged. **DoRA** (Weight-Decomposed Low-Rank Adaptation, 2024) splits each weight into a magnitude and a direction and applies a LoRA-style low-rank update only to the direction, which has been reported to close some of the residual accuracy gap between LoRA and full fine-tuning at similar parameter cost. Other variants adjust *where* rank is spent (allocating more rank to layers that need it) or *how* the low-rank matrices are initialized. The practical takeaway for a reader: LoRA is not a single frozen technique but an actively refined family, and "use LoRA" in 2026 often means "use LoRA or one of its close descendants," with the plain original still a perfectly strong default.
 
 ## Adapters
 
