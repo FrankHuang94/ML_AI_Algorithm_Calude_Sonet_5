@@ -6,7 +6,21 @@ Diffusion models are, as of 2026, the dominant approach to image, video, and aud
 
 **The core idea.** Take a real image and gradually corrupt it with a small amount of random (Gaussian) noise, repeated over many steps, until it becomes pure noise indistinguishable from random static. Then train a neural network to reverse this process — starting from pure noise, gradually remove a small amount of noise at a time, over many steps, until a realistic image emerges. If the network has genuinely learned to reverse the noising process step by step, running it starting from freshly-sampled random noise (rather than noise derived from a real image) should produce a brand-new, realistic image.
 
-**Why frame generation this way.** Directly training a network to map random noise straight to a realistic image in one shot is a very hard function to learn (a GAN, see [gans.md](gans.md), attempts something like this, with the training difficulties discussed there). Breaking the problem into many small, easy steps — "remove a little bit of noise from a slightly-noisy image" — is a much easier prediction task for a network to learn well at each individual step, even though it takes many steps (often dozens to a few hundred) to complete a full generation.
+```
+   FORWARD (fixed, not learned): gradually add noise
+   x₀ ──► x₁ ──► x₂ ──► ... ──► x_T
+  [clear    [a little  [noisier]      [pure
+   image]    noise]                    static]
+   🖼️  ───►  🖼️̷  ───►  ▒🖼️  ───►  ▒▒▒  ───►  ▓▓▓
+
+   REVERSE (learned): a network removes a little noise at each step
+   x_T ──► ... ──► x₂ ──► x₁ ──► x₀
+   ▓▓▓  ───►  ▒▒▒  ───►  ▒🖼️  ───►  🖼️̷  ───►  🖼️
+  [start from        (network predicts & subtracts        [brand-new
+   fresh noise]       the noise, step by step)             realistic image]
+```
+
+**Why frame generation this way.** Directly training a network to map random noise straight to a realistic image in one shot is a very hard function to learn (a GAN, see [gans.md](gans.md), attempts something like this, with the training difficulties discussed there). Breaking the problem into many small, easy steps — "remove a little bit of noise from a slightly-noisy image" — is a much easier prediction task for a network to learn well at each individual step, even though it takes many steps (often dozens to a few hundred) to complete a full generation. The forward (noising) direction requires no learning at all — it's just "add Gaussian noise" — which means you can generate unlimited training pairs for free: take any real image, add a known amount of noise, and ask the network to predict the noise you added. That free, abundant supervision is a big part of why diffusion trains so stably.
 
 ## DDPM (Denoising Diffusion Probabilistic Models)
 
@@ -62,13 +76,28 @@ where w > 1 is the guidance scale (how strongly to push toward the condition). W
 
 **Why classifier-free guidance won.** It requires no separate classifier model, works with whatever conditioning signal (text, class label, image) the main diffusion model was trained on rather than being limited to a specific classifier's outputs, and has empirically produced better results — this is why essentially all deployed text-to-image diffusion systems as of 2026 use classifier-free guidance rather than classifier guidance.
 
+## Flow matching and rectified flow (the current-generation training objective)
+
+**Why this belongs here.** For a 2026 reference, the DDPM/score-matching framing above is the foundation, but much of the newest large-scale image and video generation is trained with a closely related, somewhat simpler objective called **flow matching** (and its **rectified flow** variant). Several prominent recent text-to-image and text-to-video systems have adopted it. It's not a break from diffusion so much as a cleaner reformulation of the same underlying idea, so it's worth understanding how it relates.
+
+**The idea, in plain terms.** Diffusion thinks of generation as *reversing a noising process*, step by step. Flow matching instead thinks of it as learning a *velocity field* that continuously transports points from the noise distribution to the data distribution: at any intermediate point between "pure noise" and "real image," the network predicts "which direction, and how fast, should I move to get toward realistic data?" Generation is then just following that predicted velocity from a noise sample to a data sample, like following a current. **Rectified flow** additionally trains the transport paths to be as *straight* as possible (rather than curved), and the practical payoff of straighter paths is huge: a straight path can be traversed in far fewer steps (in the ideal limit, a straight line needs just one step), which directly attacks diffusion's biggest weakness — the many sequential steps needed to generate a sample.
+
+**How it relates to diffusion.** Flow matching can be shown to include the diffusion/score-based objective as a special case under a particular choice of path; the two are members of the same family (both learn to move samples from noise to data), and the practical distinction is which target the network is trained to predict (a velocity vs. the added noise) and how the intermediate paths are shaped. The important takeaways for a reader: (1) modern generators increasingly train this way because it tends to be simpler and to enable fewer-step, faster sampling; (2) it does not overturn anything in the DDPM section above — the noising-and-denoising intuition still carries; (3) the ecosystem (latent-space operation, classifier-free guidance, text conditioning via cross-attention) all transfers essentially unchanged.
+
 ## Why diffusion became dominant for image/video/audio generation
 
 Tying together threads from this file and from [gans.md](gans.md): stable, simple, likelihood-adjacent training (no adversarial game to destabilize); strong empirical sample diversity (mode-collapse-type failures, endemic to GANs, are not a comparable concern for diffusion training); a natural, well-understood mechanism (classifier-free guidance) for conditioning generation on text/class/other signals with a controllable strength; and — via latent diffusion specifically — a practical path to high-resolution generation at a computationally reasonable cost. The same core noising/denoising framework has generalized well beyond static images to video (extending the noising process across a temporal dimension as well as spatial ones) and audio generation, which is part of why diffusion has become the default generative approach across multiple modalities, not just images.
 
 ## Current frontier status
 
-Diffusion models remain the dominant approach for image, video, and audio generation as of 2026. The main practical drawback relative to some alternatives (particularly GANs, and to a lesser extent some newer few-step/distilled diffusion variants) is inference speed — the classic multi-step denoising process requires many sequential network evaluations per generated sample, which is markedly slower than a GAN's single forward pass or an autoregressive model's per-token generation. Active research directions (consistency models, distillation of many-step diffusion models into few-step or single-step samplers) are aimed specifically at closing this speed gap while retaining diffusion's quality and stability advantages; the field has made real, reported progress on this front, though many-step diffusion remains the default for maximum-quality generation as of this writing.
+Diffusion models remain the dominant approach for image, video, and audio generation as of 2026. The main practical drawback relative to some alternatives (particularly GANs, and to a lesser extent some newer few-step/distilled diffusion variants) is inference speed — the classic multi-step denoising process requires many sequential network evaluations per generated sample, which is markedly slower than a GAN's single forward pass or an autoregressive model's per-token generation.
+
+Several families of technique attack this speed problem, and they're worth distinguishing:
+- **Better samplers** (e.g., **DDIM**, Song et al. 2021) reinterpret the trained model so that generation can take *fewer, larger* steps — often reducing hundreds of steps to tens — and make the sampling process deterministic (the same noise input always yields the same image, useful for reproducibility and editing) without retraining the model.
+- **Straighter paths** (rectified flow, above) make the trajectory itself easier to traverse in few steps.
+- **Distillation into few-step or single-step samplers** (consistency models, and various distillation methods) train a fast "student" to reproduce in one or a few steps what the slow "teacher" does in many (a use of the distillation idea from [pruning-and-distillation.md](../06-inference-optimization/pruning-and-distillation.md)).
+
+The field has made real, reported progress on all three fronts, to the point where few-step generation is increasingly practical; still, many-step diffusion remains the default when maximum quality matters most, as of this writing.
 
 ## Comparison table
 
@@ -76,6 +105,8 @@ Diffusion models remain the dominant approach for image, video, and audio genera
 |---|---|---|---|
 | DDPM | 2020 | Noise-prediction training objective, stable and simple | Yes — foundational formulation, still directly used |
 | Score-based generative modeling | 2019-2021 | Score-function framing, unifies with DDPM theoretically | Yes — theoretical backbone, used interchangeably with DDPM framing |
+| DDIM | 2021 | Deterministic, fewer-step sampling from a trained model | Yes — standard faster sampler |
+| Flow matching / rectified flow | 2022-2023 | Velocity-field training; straighter, fewer-step paths | Yes — increasingly the objective for new large image/video models |
 | Latent diffusion (Stable Diffusion) | 2021/2022 | Diffuse in compressed VAE latent space, not raw pixels | Yes — dominant practical architecture |
 | Classifier-free guidance | 2022 | Amplify conditioned-vs-unconditioned prediction difference | Yes — standard conditioning technique |
 
@@ -93,5 +124,8 @@ Diffusion models remain the dominant approach for image, video, and audio genera
 - Song, Ermon, "Generative Modeling by Estimating Gradients of the Data Distribution" (2019)
 - Song et al., "Score-Based Generative Modeling through Stochastic Differential Equations" (2021)
 - Rombach, Blattmann, Lorenz, Esser, Ommer, "High-Resolution Image Synthesis with Latent Diffusion Models" (2021, published 2022) [Stable Diffusion]
+- Song, Meng, Ermon, "Denoising Diffusion Implicit Models" (2021) [DDIM]
+- Lipman et al., "Flow Matching for Generative Modeling" (2022); Liu et al., "Flow Straight and Fast: Learning to Generate and Transfer Data with Rectified Flow" (2022)
+- Song et al., "Consistency Models" (2023)
 - Dhariwal, Nichol, "Diffusion Models Beat GANs on Image Synthesis" (2021) [classifier guidance]
 - Ho, Salimans, "Classifier-Free Diffusion Guidance" (2022)
