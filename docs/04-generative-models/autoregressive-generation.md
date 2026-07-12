@@ -20,6 +20,24 @@ Walkthrough: rather than trying to model the probability of an entire sequence a
 
 Once a model can produce a probability distribution over the next token, there's a choice to make about how to actually pick a token from that distribution — this is a separate decision from training, made at inference (generation) time, and different choices produce noticeably different generation behavior from the exact same trained model.
 
+The strategies are easiest to see as different ways of deciding *which slice of the probability distribution is eligible* to be sampled. Say the model, after the prompt "The weather today is", produces this distribution over next tokens:
+
+```
+   token:   "sunny" "warm" "cold" "nice" "mild" "rainy"  ... (thousands more, tiny probs)
+   prob:     0.40    0.25   0.15   0.10   0.05   0.03     ...
+            ████████ █████  ███    ██     █      ▌
+
+   greedy      → takes only "sunny" (the single tallest bar). Deterministic.
+   top-k=3     → eligible = {sunny, warm, cold}, then sample among those 3.
+   top-p=0.80  → eligible = smallest set summing to ≥0.80 = {sunny, warm, cold} (0.40+0.25+0.15),
+                 then sample among those. (If the distribution were flatter, top-p would
+                 automatically include MORE tokens — that adaptivity is its whole advantage.)
+   temperature → reshapes the bars BEFORE the above: T<1 makes tall bars taller
+                 (more like greedy); T>1 flattens them (more surprising choices).
+```
+
+Read the whole family off this picture: greedy takes the single tallest bar; top-k keeps a fixed number of bars; top-p (nucleus) keeps however many bars are needed to cover a fixed *probability mass*; temperature rescales the bars' heights before any of that. The rest of this section just expands each of these.
+
 ### Greedy decoding
 
 **Mechanism.** Always pick the single highest-probability token at each step.
