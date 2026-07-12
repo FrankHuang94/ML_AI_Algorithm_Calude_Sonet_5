@@ -2,6 +2,27 @@
 
 Regularization is any technique that trades a little bit of training-set performance for better **generalization** (performance on data the model hasn't seen). It's the direct countermeasure to **overfitting** — when a model fits the training data so closely (including its noise and idiosyncrasies) that it performs worse on new data than a less-fitted model would. The opposite failure, **underfitting**, is when the model is too simple or undertrained to capture real patterns at all, and performs poorly on both training and new data. Regularization is fundamentally about finding the sweet spot between these two failure modes.
 
+The single most important picture in this entire file is the shape of training loss vs. validation loss (loss measured on held-out data the model never trains on) over the course of training. It captures overfitting, underfitting, and the whole point of regularization in one sketch:
+
+```
+loss
+ │
+ │\                                          ___..--  ← validation loss
+ │ \                                 __..--''         (turns back UP as the model
+ │  \._                        __..-'                  starts memorizing training noise)
+ │     `-.__            __..--'
+ │          `--..____.-'   ← validation loss minimum ("sweet spot")
+ │                    `--...______
+ │                                `--..____________  ← training loss
+ │                                                    (keeps falling — the model can
+ │                                                     always fit training data better)
+ └──────────────┬──────────────┬─────────────────────► training time
+          underfitting     GOOD FIT              overfitting
+        (both losses high) (early-stop here)  (train↓ but validation↑)
+```
+
+Training loss almost always keeps falling — a large enough model can eventually memorize its training set. What you actually care about is *validation* loss, and it typically falls, bottoms out, then rises again as the model starts fitting noise specific to the training data that doesn't generalize. Every technique in this file is a different way of pushing that validation-loss minimum lower and later — letting the model learn the real signal for longer before it starts memorizing noise. Keep this picture in mind; nearly every technique below is best understood as "a way to delay or lift the point where the validation curve turns back up."
+
 ## L1/L2 regularization and weight decay
 
 **Definition.** L1 and L2 regularization add a penalty term to the loss function based on the magnitude of the model's weights, discouraging the model from relying on very large weight values.
@@ -88,6 +109,14 @@ Walkthrough: the authors found that LayerNorm's re-centering (subtracting the me
 
 **Current status.** RMSNorm has become the default normalization layer in most modern large language models (including LLaMA-family and many others) as of 2026, having displaced standard LayerNorm in new architectures due to its lower compute cost at equivalent quality.
 
+### Group Normalization and a note on where each norm lives
+
+**Group Normalization (GroupNorm)** (Wu and He, 2018) sits between BatchNorm and LayerNorm: it splits a layer's channels into groups and normalizes within each group, per example — so, like LayerNorm, it doesn't depend on the batch (fixing BatchNorm's small-batch problem), but it normalizes over a *subset* of features rather than all of them. It's most relevant in this repository as the normalization commonly used inside the U-Net backbones of diffusion models (see [diffusion-models.md](../04-generative-models/diffusion-models.md)), where batch sizes can be small and BatchNorm's batch dependence is undesirable.
+
+The unifying way to think about all of these: they differ only in *which axes* they average over to compute the mean/variance. BatchNorm averages over the batch (and spatial) axes for each channel; LayerNorm averages over all features for each example; GroupNorm averages over a group of features for each example; RMSNorm is LayerNorm without the mean-subtraction. Same operation, different slice of the data.
+
+**QK-norm (a modern stabilization trick).** A more recent development worth flagging for a 2026 reference: several large transformers now apply normalization directly to the query and key vectors inside attention (see [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md)) before computing attention scores — "QK-norm." Its purpose is narrowly to keep attention logits (the raw pre-softmax scores) from growing to extreme magnitudes during large-scale training, a failure mode that has caused training instability ("loss spikes") in very large models. It's less a generalization regularizer than a training-stability mechanism, but it lives in the same family of "normalize activations to keep training well-behaved" tricks, which is why it belongs alongside the norms above.
+
 ## Early stopping
 
 **Definition.** Early stopping halts training once performance on a held-out validation set (data set aside from training, used only to monitor generalization) stops improving, rather than training for a fixed, predetermined number of steps.
@@ -118,6 +147,18 @@ Walkthrough: the authors found that LayerNorm's re-centering (subtracting the me
 
 **Why this counts as regularization.** Beyond their primary, celebrated role in enabling much deeper networks to train at all (see the ResNet discussion in [cnn-family.md](../03-deep-learning-architectures/cnn-family.md)), skip connections have a secondary regularizing effect: they give gradients a direct, unimpeded path back through the network (an "identity shortcut"), and they let the network default toward learning something close to the identity function for a given block if that block isn't providing useful transformation — effectively letting the network dynamically decide how much extra capacity to actually use per layer rather than being forced to use all of it. This is one reason very deep residual networks empirically overfit less badly than equally deep networks without skip connections.
 
+**Stochastic depth** (Huang et al., 2016) is a closely related technique that takes this further by *randomly dropping entire residual blocks* during training (letting their input pass through the skip connection unchanged), analogous to dropout but at the level of whole layers rather than individual neurons — it both regularizes and speeds up training of very deep networks, and is used in some vision architectures.
+
+## Implicit regularization: the regularizer you get for free
+
+Not all regularization is something you deliberately add. Several standard training choices regularize as a side effect, and this is worth naming explicitly because it explains why big models often overfit *less* than a naive parameter count would predict:
+
+- **SGD noise itself.** The randomness of mini-batch gradient estimates (see [optimization-algorithms.md](optimization-algorithms.md)) — the fact that each step uses a noisy estimate of the true gradient rather than the exact one — is not purely a nuisance. That noise empirically nudges training toward "flatter" regions of the loss landscape (minima where the loss doesn't change sharply if parameters are perturbed slightly), and flatter minima tend to generalize better than sharp ones. This is one widely-discussed (if not fully settled) explanation for why smaller batch sizes sometimes generalize better than very large ones — the "large-batch generalization gap" — since larger batches produce less gradient noise.
+- **Finite training / early stopping.** Simply not training to convergence is itself regularizing, as the early-stopping section above describes.
+- **Limited precision.** Training in lower numerical precision (see [quantization.md](../06-inference-optimization/quantization.md)) injects a small amount of rounding noise that can have a mild regularizing effect.
+
+The practical upshot: when you read that a modern LLM uses "little or no dropout," that doesn't mean it's unregularized — it means the combination of a colossal, diverse dataset (so there's little training-set-specific noise to memorize in the first place), weight decay, and the implicit regularization above is doing the job that explicit dropout did for the smaller models of the 2010s.
+
 ## Comparison table
 
 | Technique | What it constrains | Training-time or architectural? | Still standard in 2026 LLMs? |
@@ -131,6 +172,9 @@ Walkthrough: the authors found that LayerNorm's re-centering (subtracting the me
 | Data augmentation | Input diversity | Training-time (data-level) | Vision: yes. LLM: superseded by synthetic data strategies |
 | Label smoothing | Output confidence/calibration | Training-time | Used selectively |
 | Residual connections | Effective network depth/capacity usage | Architectural | Yes — foundational to nearly all deep architectures |
+| GroupNorm | Activation scale (per-example, per-group) | Architectural | Niche — diffusion U-Nets, some vision |
+| Stochastic depth | Effective depth (drops whole blocks) | Training-time | Niche — some very deep vision nets |
+| Implicit (SGD noise, low precision) | Sharpness of the found minimum | Emergent (not deliberately added) | Yes — always present |
 
 ## Relationship to other algorithms
 
@@ -148,6 +192,8 @@ Walkthrough: the authors found that LayerNorm's re-centering (subtracting the me
 - Ioffe, Szegedy, "Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift" (2015)
 - Ba, Kiros, Hinton, "Layer Normalization" (2016)
 - Zhang, Sennrich, "Root Mean Square Layer Normalization" (2019)
+- Wu, He, "Group Normalization" (2018)
+- Huang et al., "Deep Networks with Stochastic Depth" (2016)
 - Zhang et al., "mixup: Beyond Empirical Risk Minimization" (2018)
 - Yun et al., "CutMix: Regularization Strategy to Train Strong Classifiers with Localizable Features" (2019)
 - Szegedy et al., "Rethinking the Inception Architecture for Computer Vision" (2016) [label smoothing]
