@@ -39,7 +39,28 @@ Walkthrough, term by term:
 
 The net effect: every position's new representation is a content-dependent blend of every other position's information, with the blending weights determined by how relevant each other position's key is to this position's query.
 
+**The data flow, as a picture.** For a single query position attending over a 3-token sequence:
+
+```
+                 ┌──────── keys ────────┐
+   query q ──┬──►  k₁      k₂      k₃
+             │    (dot)   (dot)   (dot)      ← q·kᵢ : "how relevant is each position to me?"
+             │      │       │       │
+             │   ÷√d_k    ÷√d_k   ÷√d_k       ← scale down
+             │      └───────┼───────┘
+             │           softmax               ← turn scores into weights that sum to 1
+             │         w₁   w₂   w₃            e.g.  0.1  0.7  0.2
+             │          │    │    │
+   values ───┼──►  v₁   v₂   v₃                ← each position also offers a value vector
+             │       ×0.1 ×0.7 ×0.2
+             └────────►  Σ  = output           ← weighted sum: 0.1·v₁ + 0.7·v₂ + 0.2·v₃
+```
+
+**A tiny worked example, so "weighted sum of values" is concrete.** Suppose after computing and scaling the dot products, one query's three scores are [1.0, 3.0, 1.0]. Softmax turns these into weights ≈ [0.11, 0.79, 0.11] (the middle position dominates because its score was highest). If the three value vectors happen to be v₁ = [2, 0], v₂ = [0, 4], v₃ = [1, 1], the output for this query is 0.11·[2,0] + 0.79·[0,4] + 0.11·[1,1] ≈ [0.33, 3.28] — overwhelmingly shaped by v₂, because the query found position 2 most relevant. That is the entire mechanism: relevance scores become weights, weights blend the values. Everything else in a Transformer is bookkeeping around this operation.
+
 **Causal masking (brief preview).** For decoder-only, autoregressive generation (see [autoregressive-generation.md](../04-generative-models/autoregressive-generation.md)), each position must only be allowed to attend to *earlier* positions (it shouldn't get to "see the future" it's supposed to be predicting). This is implemented simply by setting the raw attention scores for any position-pair where the key position comes after the query position to negative infinity before the softmax — softmax then assigns those positions exactly zero weight.
+
+**A clarification that resolves a very common confusion.** "Process the whole sequence at once" is true during *training* (and during the "prefill" of a prompt at inference), where all positions and their correct next-tokens are known up front, so the whole n×n attention matrix can be computed in one parallel pass — this parallelism is the Transformer's headline advantage over RNNs. But during *generation*, the model still produces tokens strictly one at a time (it can't compute token 51 before it has decided token 50, because token 50 becomes part of token 51's input). Attention removes the *training-time* sequential bottleneck, not the fundamental left-to-right nature of generating text. This distinction is exactly why the KV cache (see [kv-cache-and-attention-optimization.md](../06-inference-optimization/kv-cache-and-attention-optimization.md)) exists — it stores the keys and values from already-generated tokens so they don't have to be recomputed on every one of those sequential generation steps.
 
 ## Multi-head attention
 
@@ -52,9 +73,23 @@ MultiHead(Q, K, V) = Concat(head_1, ..., head_h) · W_O
 
 Walkthrough: a single attention head can only really express one "type" of relevance pattern well at a time (e.g., "attend to the subject of the sentence"). Multiple heads let the model simultaneously track several different kinds of relationships in parallel — one head might learn to track syntactic dependencies (like subject-verb agreement), another might track coreference (which pronoun refers to which noun), another might attend mostly to nearby positions, and so on — each within its own lower-dimensional subspace, then combine all these perspectives together via the final W_O projection. This is analogous to how a CNN layer learns many different filters in parallel rather than just one (see [cnn-family.md](cnn-family.md)), giving the layer more representational capacity for a similar total computational budget.
 
+## The feedforward sub-layer (the other half of the block)
+
+It's easy to read this far and conclude a Transformer "is attention," but that's only half the block — and, by parameter count, usually the smaller half. Every Transformer block is **attention followed by a position-wise feedforward network (FFN)**, and the FFN typically holds roughly two-thirds of the block's parameters and a comparable share of its compute.
+
+**What it is.** The FFN is a small two-layer neural network applied *independently and identically to each position* (the same weights for every token): it projects each position's vector up to a much larger hidden dimension (commonly 4× the model's width), applies a nonlinearity, and projects back down.
+
+```
+FFN(x) = W₂ · nonlinearity(W₁ · x + b₁) + b₂
+```
+
+**The division of labor.** A useful (if simplified) mental model: attention is where tokens *mix and exchange* information across positions ("what should I pay attention to elsewhere?"), while the FFN is where each token *processes and transforms* the information it has gathered, in isolation ("now that I've gathered context, what do I make of it?"). Attention moves information between positions; the FFN does per-position computation on it. This matters for the rest of the repository: the FFN is the sub-layer that Mixture-of-Experts replaces with many parallel experts (see [mixture-of-experts.md](mixture-of-experts.md) — MoE is fundamentally "swap the one FFN for many, and route each token to a few"), and a good deal of interpretability research (see [open-problems.md](../09-roadmaps/open-problems.md)) suggests much of a model's stored factual "knowledge" lives in these FFN weights rather than in the attention layers.
+
+**The nonlinearity.** Early Transformers used ReLU (see [cnn-family.md](cnn-family.md)); most modern LLMs use a smoother gated variant such as GELU or, very commonly, SwiGLU (a gated unit where one linear projection modulates another). The differences are incremental — the point is that this nonlinearity is what lets the network represent something more expressive than a single big linear map.
+
 ## Positional encoding
 
-**The problem.** Self-attention, as described above, is fundamentally **permutation-invariant** — if you shuffled the order of the input positions, the set of computed attention outputs would just be shuffled correspondingly, with no other change. This is a problem, because word order obviously matters ("dog bites man" ≠ "man bites dog"). Some explicit signal about position needs to be injected.
+**The problem.** Self-attention, as described above, is fundamentally **permutation-equivariant** — if you shuffled the order of the input positions, the computed outputs would just be shuffled the same way, with no other change (equivariant means "permute the input, and the output permutes identically"; this is subtly different from permutation-*invariant*, which would mean the output doesn't change at all). Either way, the consequence is the same and it's a problem: attention has no built-in notion of *order*, and word order obviously matters ("dog bites man" ≠ "man bites dog"). Some explicit signal about position needs to be injected.
 
 **Sinusoidal positional encoding** (used in the original 2017 Transformer). A fixed (not learned) vector is added to each position's input embedding, where each dimension of that vector is a sine or cosine function of the position, at a different frequency per dimension:
 
