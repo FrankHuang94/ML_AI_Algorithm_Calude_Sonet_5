@@ -16,6 +16,7 @@ Full treatment: [optimization-algorithms.md](../01-foundations/optimization-algo
 | AdamW | 2019 | Decoupled weight decay | Moderate-high | Dominant default | LLM pretraining/fine-tuning |
 | Lion | 2023 | Sign-based update, less optimizer memory | Lower than Adam (1 buffer) | Real but minority adoption | Large-scale pretraining (some labs) |
 | Sophia | 2023 | Lightweight second-order estimate | Moderate-high | Promising, limited adoption | LLM pretraining (experimental) |
+| Muon | 2024 | Orthogonalized matrix-aware updates | Lower than Adam | Emerging; credible AdamW challenger | Large-scale pretraining |
 | LAMB / LARS | 2017 / 2019 | Layer-wise LR rescaling for large batches | Moderate-high | Standard for large-batch phases | Large-batch distributed pretraining |
 | L-BFGS / Natural Gradient | Pre-deep-learning | True curvature-aware steps | Very high (near-infeasible at scale) | Rare at LLM scale | Small/medium-scale optimization |
 
@@ -41,6 +42,7 @@ Full treatment: [04-generative-models](../04-generative-models/)
 | GANs | 2014 | Adversarial generator/discriminator training | Fast sampling (single pass) | Niche (face gen/editing, real-time) | Superseded by diffusion for open-domain images |
 | VAEs | 2013 | Probabilistic latent space, ELBO training | Fast sampling; stable training | Superseded standalone; essential as a component | Compression stage inside latent diffusion |
 | Diffusion models | 2015/2020 | Iterative denoising, classifier-free guidance | Slow sampling (multi-step) | Yes — dominant | Image/video/audio generation |
+| Flow matching / rectified flow | 2022-2023 | Velocity-field training; straighter, fewer-step paths | Faster sampling than classic diffusion | Yes — increasingly used for new image/video models | Image/video generation |
 | Autoregressive generation | Concept: classical; LLM-scale: 2018+ | Next-token prediction + sampling strategies | Sequential generation (mitigated by speculative decoding) | Yes — dominant | Text generation, general-purpose LLMs |
 | Flow-based models | 2016-2018 | Exact likelihood via invertible transforms | Restricted architecture, less flexible | Niche | Exact-likelihood/density-estimation use cases |
 

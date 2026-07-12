@@ -8,9 +8,9 @@ Files in this repository define jargon inline on first use with a short parenthe
 
 ## Term count by letter (as of last full build pass)
 
-| A | B | C | D | E | F | G | H | I | K | L | M | O | P | Q | R | S | T | U | W | Z | Total |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 7 | 3 | 6 | 3 | 5 | 2 | 6 | 3 | 3 | 3 | 5 | 8 | 2 | 4 | 2 | 5 | 9 | 3 | 1 | 1 | 1 | 82 |
+| A | B | C | D | E | F | G | H | I | K | L | M | O | P | Q | R | S | T | U | V | W | Z | Total |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 7 | 3 | 7 | 7 | 5 | 4 | 9 | 4 | 4 | 3 | 5 | 10 | 3 | 5 | 3 | 5 | 9 | 5 | 1 | 2 | 3 | 1 | 105 |
 
 ---
 
@@ -43,11 +43,11 @@ Files in this repository define jargon inline on first use with a short parenthe
 ## D
 
 - **Data leakage** — when information about the target variable inadvertently leaks into features during preprocessing, inflating training/validation performance in a way that doesn't generalize. Covered in: [ensemble-methods.md](../02-classical-ml/ensemble-methods.md).
-- **Decision boundary** — the dividing surface in feature space where a classifier switches from predicting one class to another; its shape (straight line, staircase, smooth curve) characterizes the classifier. Covered in: [supervised-learning.md](../02-classical-ml/supervised-learning.md).
 - **DDIM (Denoising Diffusion Implicit Models)** — a technique for sampling from a trained diffusion model in fewer, larger, deterministic steps, speeding up generation without retraining. Covered in: [diffusion-models.md](../04-generative-models/diffusion-models.md).
+- **Decision boundary** — the dividing surface in feature space where a classifier switches from predicting one class to another; its shape (straight line, staircase, smooth curve) characterizes the classifier. Covered in: [supervised-learning.md](../02-classical-ml/supervised-learning.md).
+- **Degeneration** — a failure mode of likelihood-maximizing text decoding (greedy/beam search) producing repetitive, generic, or looping output rather than varied, human-like text. Covered in: [autoregressive-generation.md](../04-generative-models/autoregressive-generation.md).
 - **Discriminative vs. generative model** — a discriminative model learns the boundary between classes directly (P(class\|features)); a generative model models what each class's data looks like (P(features\|class)) and applies Bayes' rule to classify. Covered in: [supervised-learning.md](../02-classical-ml/supervised-learning.md).
 - **Disentanglement** — a property of a latent representation in which separate dimensions capture separate, independent factors of variation (e.g., rotation vs. size); encouraged by β-VAE. Covered in: [vaes.md](../04-generative-models/vaes.md).
-- **Degeneration** — a failure mode of likelihood-maximizing text decoding (greedy/beam search) producing repetitive, generic, or looping output rather than varied, human-like text. Covered in: [autoregressive-generation.md](../04-generative-models/autoregressive-generation.md).
 - **Distillation (knowledge distillation)** — training a smaller "student" model to reproduce a larger "teacher" model's output distribution, producing a smaller, cheaper model that often outperforms one trained from scratch on hard labels alone. Covered in: [pruning-and-distillation.md](../06-inference-optimization/pruning-and-distillation.md).
 
 ## E
@@ -67,8 +67,8 @@ Files in this repository define jargon inline on first use with a short parenthe
 
 ## G
 
-- **Generalization** — how well a model performs on data it did not train on, as opposed to how well it merely memorized its training set. The entire point of regularization is to improve this. Covered in: [regularization-techniques.md](../01-foundations/regularization-techniques.md).
 - **GELU / SwiGLU** — smooth (GELU) and gated (SwiGLU) activation functions used in the feedforward sub-layers of modern Transformers, in place of the older ReLU. Covered in: [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md).
+- **Generalization** — how well a model performs on data it did not train on, as opposed to how well it merely memorized its training set. The entire point of regularization is to improve this. Covered in: [regularization-techniques.md](../01-foundations/regularization-techniques.md).
 - **Gradient** — the vector of partial derivatives of the loss function with respect to every model parameter; points in the direction of steepest increase of the loss, so training steps move opposite to it. Covered in: [optimization-algorithms.md](../01-foundations/optimization-algorithms.md).
 - **Gradient clipping** — rescaling the gradient vector so its norm never exceeds a fixed threshold, to prevent a single abnormally large gradient from destabilizing training. Covered in: [optimization-algorithms.md](../01-foundations/optimization-algorithms.md).
 - **Gradient explosion** — a failure mode where gradients grow multiplicatively as they're backpropagated through many layers or time steps, producing enormous, destabilizing updates. Contrast with vanishing gradients. Covered in: [optimization-algorithms.md](../01-foundations/optimization-algorithms.md).
@@ -121,8 +121,8 @@ Files in this repository define jargon inline on first use with a short parenthe
 ## O
 
 - **Optimizer state** — the extra per-parameter buffers an optimizer maintains (e.g., Adam's two moment estimates); at LLM scale this can exceed the size of the model's own weights and is a major target of memory-sharding techniques. Covered in: [optimization-algorithms.md](../01-foundations/optimization-algorithms.md).
-- **Over-parameterized** — describes a network with more parameters than strictly necessary for its learned function; the empirical basis for pruning (many weights can be removed with little accuracy loss). Covered in: [pruning-and-distillation.md](../06-inference-optimization/pruning-and-distillation.md).
 - **Overfitting** — when a model fits the training data (including its noise/quirks) so closely that it performs worse on new, unseen data than a less-fitted model would. Contrast with underfitting. Covered in: [regularization-techniques.md](../01-foundations/regularization-techniques.md).
+- **Over-parameterized** — describes a network with more parameters than strictly necessary for its learned function; the empirical basis for pruning (many weights can be removed with little accuracy loss). Covered in: [pruning-and-distillation.md](../06-inference-optimization/pruning-and-distillation.md).
 
 ## P
 
@@ -161,8 +161,8 @@ Files in this repository define jargon inline on first use with a short parenthe
 ## T
 
 - **Temperature** — a scalar dividing logits before softmax during sampling; below 1 sharpens (more deterministic) a model's output distribution, above 1 flattens it (more random/diverse). Covered in: [autoregressive-generation.md](../04-generative-models/autoregressive-generation.md).
-- **Test-time compute** — computation spent at inference time (e.g., generating longer intermediate reasoning) to improve output quality, as a scaling axis distinct from pretraining compute. Covered in: [long-term-outlook.md](../09-roadmaps/long-term-outlook.md).
 - **Temporal-difference (TD) error** — in RL, the gap between a value estimate and a better "target" estimate (reward plus discounted next-state value); the signal that drives Q-learning and value-model updates. Covered in: [value-based-methods.md](../07-reinforcement-learning/value-based-methods.md).
+- **Test-time compute** — computation spent at inference time (e.g., generating longer intermediate reasoning) to improve output quality, as a scaling axis distinct from pretraining compute. Covered in: [long-term-outlook.md](../09-roadmaps/long-term-outlook.md).
 - **Token** — a chunk of text (often a word or sub-word piece) that a language model treats as a single unit of input/output. Covered in: [autoregressive-generation.md](../04-generative-models/autoregressive-generation.md).
 - **Tokenizer / BPE (Byte-Pair Encoding)** — the component (and dominant algorithm) that converts raw text into the fixed subword vocabulary a model consumes, by greedily merging frequent adjacent pairs into single tokens. Covered in: [pretraining-strategies.md](../05-training-methodology/pretraining-strategies.md).
 
