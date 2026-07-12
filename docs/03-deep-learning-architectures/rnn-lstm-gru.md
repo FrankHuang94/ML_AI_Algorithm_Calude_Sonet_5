@@ -46,7 +46,23 @@ cₜ = fₜ ⊙ c_{t-1} + iₜ ⊙ c̃ₜ         (⊙ = element-wise multiplica
 hₜ = oₜ ⊙ tanh(cₜ)
 ```
 
-Walkthrough: the forget and input gates together decide, per memory dimension, "keep the old value, mostly replace it with new information, or some blend of both" — and critically, the cell-state update is dominated by an additive term (fₜ ⊙ c_{t-1} plus iₜ ⊙ c̃ₜ) rather than the repeated matrix multiplication that plagues the vanilla RNN's hidden state. When the forget gate is close to 1, information can flow across many time steps through the cₜ pathway with little decay, because there's no repeated multiplication by a weight matrix along that path — just an approximately-preserving addition at each step. This is the specific mechanical fix for the vanishing gradient problem: gradients can flow back through the cell-state path largely undiminished, as long as the forget gate stays open.
+The clearest way to see why this design fixes the vanishing gradient is to picture the **cell state as a conveyor belt** running straight across time, with gates that add to or erase from it but never repeatedly multiply it by a weight matrix:
+
+```
+             forget gate         input gate
+             (erase some?)       (write some?)
+                  │                   │
+   c_{t-1} ──────►⊗────────────────►(+)──────────► cₜ   ← the "conveyor belt":
+   (old memory)   ▲                   ▲              (mostly just carries memory
+                  │                   │               forward, lightly edited)
+                 fₜ         iₜ ⊙ c̃ₜ (candidate new info)
+                                                     │
+                                          output gate⊗──► hₜ (what to expose now)
+                                                     ▲
+                                                    oₜ
+```
+
+Walkthrough: the forget and input gates together decide, per memory dimension, "keep the old value, mostly replace it with new information, or some blend of both" — and critically, the cell-state update is dominated by an additive term (fₜ ⊙ c_{t-1} plus iₜ ⊙ c̃ₜ) rather than the repeated matrix multiplication that plagues the vanilla RNN's hidden state. When the forget gate is close to 1, information can flow across many time steps through the cₜ pathway with little decay, because there's no repeated multiplication by a weight matrix along that path — just an approximately-preserving addition at each step. This is the specific mechanical fix for the vanishing gradient problem: gradients can flow back through the cell-state path largely undiminished, as long as the forget gate stays open. (Notice the conceptual kinship with the residual/skip connection in [cnn-family.md](cnn-family.md) and the Transformer: in all three, the trick for training depth is an *additive* path that gradients can travel along without being repeatedly scaled down. The LSTM was doing this for depth-in-time two decades before residual connections did it for depth-in-layers.)
 
 **Why it mattered.** LSTMs could reliably learn dependencies spanning hundreds of time steps, dramatically outperforming vanilla RNNs on language modeling, translation, and speech tasks, and became the default recurrent architecture for essentially all sequence modeling work from the late 2000s (once compute caught up to make deep LSTM training practical) through the mid-2010s.
 
