@@ -2,6 +2,23 @@
 
 A loss function is the single number a model is trained to minimize — it quantifies "how wrong" the model's current predictions are, averaged over training examples, so that the optimization algorithms in [optimization-algorithms.md](optimization-algorithms.md) have something concrete to reduce. Choice of loss function determines what "good performance" even means for a given task, so getting it right (or wrong) shapes everything downstream. This file also briefly covers **entropy** and **KL divergence**, foundational information-theory concepts that recur constantly elsewhere in this repository.
 
+The single most useful thing to internalize about loss functions is their *shape* — how hard they punish a given amount of wrongness — because that shape is exactly what the optimizer chases. Here are the main regression/classification losses sketched as "penalty vs. how wrong the prediction is":
+
+```
+   MSE (squared)        MAE (absolute)       Cross-entropy            Hinge (SVM)
+ penalty                penalty              penalty                  penalty
+   │   .                  │  \   /             │ \                      │\
+   │    .       .         │   \ /              │  \                     │ \
+   │     .     .          │    V               │   \__                  │  \___________
+   │      \   /           │   / \              │      ‾‾‾‾--__          │       margin↑
+   └────────V────► err    └──/───\──► err      └───────────► p(correct) └──────────► y·f(x)
+      big miss = HUGE      big miss grows       confident-wrong          zero penalty once
+      (parabola)           only linearly        → ∞; confident-right     safely correct past
+                                                → 0                      the margin
+```
+
+Read off the design intent from each shape: MSE's parabola means one big outlier dominates the loss (so the model bends over backwards to fix rare huge errors); MAE's "V" treats a big miss proportionally, so it ignores outliers more; cross-entropy's exploding wall punishes *confident wrong* answers almost without bound; hinge goes flat the moment you're safely correct, so it stops caring once the margin is satisfied. The rest of this file is mostly these four shapes plus a few specialized variants.
+
 ## MSE / L2 loss
 
 **Definition.** Mean Squared Error averages the squared difference between predicted and true values.
@@ -19,6 +36,8 @@ Walkthrough: for every example i, take the difference between the true value y�
 **Definition.** Mean Absolute Error averages the absolute (unsquared) difference between predicted and true values: L = (1/N)·Σᵢ|yᵢ − ŷᵢ|.
 
 **Why it differs from MSE.** Because errors aren't squared, MAE penalizes a large single error proportionally to its size rather than its square — it's far less sensitive to outliers than MSE, at the cost of a less smooth gradient near zero error (its derivative is a constant ±1 regardless of error size, rather than proportional to the error). Used when robustness to outliers matters more than penalizing big misses heavily.
+
+**Huber loss** is the practical compromise between the two: it behaves like MSE (smooth parabola) for small errors and like MAE (linear) for large errors, switching over at a tunable threshold δ. This gives you MSE's nice smooth gradient near the optimum *and* MAE's robustness to the occasional huge outlier. It's a common default for robust regression, and shows up in reinforcement learning — the DQN family (see [value-based-methods.md](../07-reinforcement-learning/value-based-methods.md)) typically uses Huber loss on its value-prediction error precisely because RL targets can occasionally be wildly off, and you don't want one such target to produce a destabilizing gradient.
 
 ## Cross-entropy loss
 
@@ -43,6 +62,18 @@ L = −(1/N) · Σᵢ log(ŷᵢ,correct_class)
 
 Walkthrough: softmax exponentiates every logit (making everything positive and exaggerating the gaps between large and small scores) and normalizes by the sum, producing a probability for each class. The loss is then just the negative log of the probability the model assigned to the correct class — the same "confidently right, near-zero loss; confidently wrong, huge loss" shape as the binary case, generalized to many classes.
 
+**A concrete example, so the "explodes" claim isn't abstract.** Suppose the correct class is "cat" and we look at the loss (natural log) for a single example as the model's confidence in "cat" varies:
+
+| Model's probability on the correct class | Loss = −ln(p) |
+|---|---|
+| 0.99 (very confident, correct) | 0.01 |
+| 0.70 (fairly confident, correct) | 0.36 |
+| 0.50 (uncertain) | 0.69 |
+| 0.10 (confidently wrong) | 2.30 |
+| 0.01 (very confidently wrong) | 4.61 |
+
+Notice the asymmetry: being right adds almost nothing to the loss (0.01), but being confidently wrong is punished hard (4.61), and the punishment has no upper bound — a model that assigns probability approaching 0 to the true answer incurs loss approaching infinity. This is exactly the property you want for a probabilistic classifier: it makes the model pay dearly for confident mistakes, which pushes it toward being *calibrated* (honest about its uncertainty) rather than recklessly overconfident.
+
 **Why it mattered / current status.** Cross-entropy is the default loss for essentially all classification tasks, and — critically for this repository — it is also the loss used to train language models on next-token prediction (predicting which token comes next is a classification problem over the vocabulary; see [autoregressive-generation.md](../04-generative-models/autoregressive-generation.md)). It remains completely dominant as of 2026.
 
 ## Hinge loss (SVM)
@@ -62,6 +93,8 @@ D_KL(P ‖ Q) = Σₓ P(x) · log(P(x) / Q(x))
 ```
 
 Walkthrough: for each possible outcome x, weight the log-ratio of the two distributions' probabilities by how likely that outcome actually is under the true distribution P. If P and Q are identical, every log-ratio term is log(1) = 0, so KL divergence is exactly zero. The more Q's probabilities diverge from P's (especially by assigning low probability to outcomes P considers likely), the larger the value. KL divergence is **not symmetric** — D_KL(P‖Q) ≠ D_KL(Q‖P) in general — which matters when choosing which distribution is the "reference" (P) and which is the one being fit (Q).
+
+**Why the asymmetry actually matters — mode-covering vs. mode-seeking.** This isn't just mathematical pedantry; the two directions produce visibly different behavior when you fit a simple model Q to a complex true distribution P, and it explains real design choices in generative models. **Forward KL**, D_KL(P‖Q), is dominated by places where P is large — it heavily punishes Q for assigning low probability to outcomes that are actually common, so a Q minimizing forward KL is *mode-covering*: it spreads itself out to put at least some probability everywhere P does, even if that means blurring across multiple distinct modes (this is roughly what maximum-likelihood training, and therefore cross-entropy, does — see below). **Reverse KL**, D_KL(Q‖P), is dominated by places where Q is large — it punishes Q for putting probability where P is small, so a Q minimizing reverse KL is *mode-seeking*: it prefers to lock onto one mode of P and ignore the others rather than blur between them. When you later read that VAEs (see [vaes.md](../04-generative-models/vaes.md)) or certain RL objectives use one direction or the other, this is the behavioral consequence at stake — "do I want the model to hedge and cover everything, or commit to one plausible answer?"
 
 **Why this recurs so much elsewhere in this repository.** KL divergence shows up repeatedly: as the regularization term in the VAE's ELBO objective (see [vaes.md](../04-generative-models/vaes.md)), as the constraint in TRPO and the implicit constraint in PPO (see [policy-gradient-methods.md](../07-reinforcement-learning/policy-gradient-methods.md)), and as the term keeping an RLHF-tuned model's outputs from drifting too far from its pretrained base model (see [rlhf-and-alignment.md](../05-training-methodology/rlhf-and-alignment.md)). It's worth internalizing once here rather than re-deriving in every file: KL divergence is the standard way to penalize "distribution Q has drifted too far from reference distribution P."
 
@@ -109,6 +142,7 @@ Walkthrough: cross-entropy loss for a language model is measured in "nats" (or b
 |---|---|---|---|
 | MSE / L2 | Regression | Yes (squares errors) | Continuous value prediction |
 | MAE / L1 | Regression | No | Robust regression |
+| Huber | Regression | Reduced (MSE→MAE past threshold δ) | Robust regression, RL value targets (DQN) |
 | Binary/categorical cross-entropy | Classification | N/A (probability-based) | Classification, language modeling |
 | Hinge loss | Classification (margin-based) | Moderate | SVMs |
 | KL divergence | Distribution matching | N/A | VAEs, RLHF/PPO drift constraints, distillation |
