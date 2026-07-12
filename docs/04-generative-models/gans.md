@@ -6,6 +6,19 @@ Generative Adversarial Networks (GANs) were, for roughly 2014-2020, the dominant
 
 **Name & definition.** A GAN consists of two neural networks trained in opposition: a **generator**, which takes random noise as input and tries to produce realistic-looking fake data, and a **discriminator**, which tries to distinguish the generator's fakes from real training examples.
 
+The classic analogy is a counterfeiter versus a detective, both improving by competing:
+
+```mermaid
+flowchart LR
+    N[Random noise z] --> G["Generator<br/>(the counterfeiter:<br/>makes fake images)"]
+    G -->|fake image| D{"Discriminator<br/>(the detective:<br/>real or fake?)"}
+    R[Real training images] -->|real image| D
+    D -->|"'fake!' → generator learns<br/>to fool better next time"| G
+    D -->|"scored right/wrong →<br/>detective learns to catch better"| D
+```
+
+Both networks improve by competing: the generator gets better at faking because the discriminator keeps catching it, and the discriminator gets better at catching because the generator keeps improving. At the theoretical endpoint, the generator's fakes are indistinguishable from real data and the discriminator is reduced to a coin flip. This mutual escalation is the source of both GANs' power and their notorious training difficulty (below).
+
 **Origin.** Goodfellow et al., "Generative Adversarial Networks" (2014).
 
 **Core mechanism — the minimax objective.**
