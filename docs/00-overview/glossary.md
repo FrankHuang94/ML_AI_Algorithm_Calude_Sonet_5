@@ -43,7 +43,9 @@ Files in this repository define jargon inline on first use with a short parenthe
 
 - **Data leakage** — when information about the target variable inadvertently leaks into features during preprocessing, inflating training/validation performance in a way that doesn't generalize. Covered in: [ensemble-methods.md](../02-classical-ml/ensemble-methods.md).
 - **Decision boundary** — the dividing surface in feature space where a classifier switches from predicting one class to another; its shape (straight line, staircase, smooth curve) characterizes the classifier. Covered in: [supervised-learning.md](../02-classical-ml/supervised-learning.md).
+- **DDIM (Denoising Diffusion Implicit Models)** — a technique for sampling from a trained diffusion model in fewer, larger, deterministic steps, speeding up generation without retraining. Covered in: [diffusion-models.md](../04-generative-models/diffusion-models.md).
 - **Discriminative vs. generative model** — a discriminative model learns the boundary between classes directly (P(class\|features)); a generative model models what each class's data looks like (P(features\|class)) and applies Bayes' rule to classify. Covered in: [supervised-learning.md](../02-classical-ml/supervised-learning.md).
+- **Disentanglement** — a property of a latent representation in which separate dimensions capture separate, independent factors of variation (e.g., rotation vs. size); encouraged by β-VAE. Covered in: [vaes.md](../04-generative-models/vaes.md).
 - **Degeneration** — a failure mode of likelihood-maximizing text decoding (greedy/beam search) producing repetitive, generic, or looping output rather than varied, human-like text. Covered in: [autoregressive-generation.md](../04-generative-models/autoregressive-generation.md).
 - **Distillation (knowledge distillation)** — training a smaller "student" model to reproduce a larger "teacher" model's output distribution, producing a smaller, cheaper model that often outperforms one trained from scratch on hard labels alone. Covered in: [pruning-and-distillation.md](../06-inference-optimization/pruning-and-distillation.md).
 
@@ -60,6 +62,7 @@ Files in this repository define jargon inline on first use with a short parenthe
 - **Feedforward network (FFN)** — the position-wise two-layer sub-network in each Transformer block (applied identically to every token); holds most of a block's parameters and is what Mixture-of-Experts replaces with many experts. Covered in: [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md).
 - **Few-shot (learning/prompting)** — giving a model a handful (typically 1-100) of example input/output pairs at inference time (in the prompt, not via weight updates) and expecting it to generalize the pattern to a new input. Contrast with zero-shot. Covered in: [scope-and-methodology.md](scope-and-methodology.md).
 - **FLOPs (floating-point operations)** — a measure of computational cost; used to quantify how much compute a model requires to process a token, train, or run inference. Covered in: [mixture-of-experts.md](../03-deep-learning-architectures/mixture-of-experts.md).
+- **Flow matching / rectified flow** — a generative-model training objective that learns a velocity field transporting noise to data along (ideally straight) paths; closely related to diffusion and increasingly used for large image/video generators. Covered in: [diffusion-models.md](../04-generative-models/diffusion-models.md).
 
 ## G
 
@@ -124,6 +127,7 @@ Files in this repository define jargon inline on first use with a short parenthe
 - **PEFT (Parameter-Efficient Fine-Tuning)** — an umbrella term for fine-tuning methods (LoRA, adapters, prefix/prompt tuning) that freeze most of a pretrained model's weights and train only a small number of additional/modified parameters. Covered in: [finetuning-and-peft.md](../05-training-methodology/finetuning-and-peft.md).
 - **Perplexity** — a human-interpretable transform of a language model's cross-entropy loss (e^loss); roughly, "the model is as uncertain as if choosing uniformly among this many options per token." Lower is better. Covered in: [loss-functions.md](../01-foundations/loss-functions.md).
 - **Policy** — in reinforcement learning, the model/function being trained to choose actions (e.g., which token to generate); RLHF's RL stage optimizes the language model as a policy. Covered in: [rlhf-and-alignment.md](../05-training-methodology/rlhf-and-alignment.md); see also [value-based-methods.md](../07-reinforcement-learning/value-based-methods.md).
+- **Posterior collapse** — a VAE failure mode where the latent code becomes uninformative (the encoder just outputs the prior) because a powerful decoder learns to ignore it while still driving the KL term to zero. Covered in: [vaes.md](../04-generative-models/vaes.md).
 - **Prior** — an assumed probability distribution over a variable before observing data (e.g., a VAE's assumed standard-normal distribution over latent vectors), used as a reference/target that inference is regularized toward. Covered in: [vaes.md](../04-generative-models/vaes.md).
 
 ## Q
@@ -161,6 +165,10 @@ Files in this repository define jargon inline on first use with a short parenthe
 ## U
 
 - **Underfitting** — when a model is too simple or undertrained to capture the real patterns in the training data, performing poorly on both training and new data. Contrast with overfitting. Covered in: [regularization-techniques.md](../01-foundations/regularization-techniques.md).
+
+## V
+
+- **VQ-VAE (Vector-Quantized VAE)** — a VAE variant with a discrete latent (each latent position is snapped to the nearest entry in a learned codebook), enabling images/audio to be modeled as token sequences by autoregressive Transformers. Covered in: [vaes.md](../04-generative-models/vaes.md).
 
 ## W
 
