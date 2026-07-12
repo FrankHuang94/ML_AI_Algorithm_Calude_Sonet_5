@@ -20,7 +20,19 @@ top_k_experts, weights = TopK(softmax(scores), k)
 output = Σ_{i in top_k_experts} weights_i · Expert_i(x)
 ```
 
-Walkthrough: for each token, the router effectively asks "which of my experts are most relevant to this specific input?" and only pays the compute cost of running those. Because this decision is made per-token (not per-sequence or per-batch), different tokens in the same sequence can be routed to entirely different experts — a natural fit for the intuition that different kinds of content (say, code vs. prose, or different languages) might benefit from specialized sub-networks.
+```mermaid
+flowchart TD
+    T["Token representation x"] --> R{Router<br/>scores all experts}
+    R -->|"0.71 (top-2)"| E2["Expert 2 ✓ runs"]
+    R -->|"0.22 (top-2)"| E5["Expert 5 ✓ runs"]
+    R -.->|"0.03 (skip)"| E1["Expert 1 ✗ idle"]
+    R -.->|"0.02 (skip)"| E3["Expert 3 ✗ idle"]
+    R -.->|"0.02 (skip)"| E8["Expert 8 ✗ idle"]
+    E2 -->|"× 0.71"| S[Weighted sum = output]
+    E5 -->|"× 0.22"| S
+```
+
+Walkthrough: for each token, the router effectively asks "which of my experts are most relevant to this specific input?" and only pays the compute cost of running those (the solid arrows above — say experts 2 and 5); the rest sit idle for this token (dashed arrows). Because this decision is made per-token (not per-sequence or per-batch), different tokens in the same sequence can be routed to entirely different experts — a natural fit for the intuition that different kinds of content (say, code vs. prose, or different languages) might benefit from specialized sub-networks. The crucial accounting: with 8 experts and top-2 routing, the model has ~8× the parameters of a single-expert layer but only pays ~2× the per-token compute, because 6 of the 8 experts are skipped for any given token. That gap between "parameters you have" and "compute you pay per token" is the entire reason MoE exists.
 
 ## Load balancing losses
 
@@ -53,6 +65,10 @@ Walkthrough: for each token, the router effectively asks "which of my experts ar
 **Core contribution.** Mixtral was a prominent, widely-used open-weight demonstration that MoE architectures (specifically, top-2 routing among 8 experts per layer in the original Mixtral 8x7B) could achieve strong performance relative to their active-compute cost, making the accuracy-per-inference-FLOP benefits of MoE tangible and reproducible outside the largest closed labs.
 
 **Why it mattered.** Mixtral's open release meaningfully broadened practical, hands-on understanding and adoption of MoE architectures across the wider research and open-source community, beyond the handful of large labs that had published MoE research earlier.
+
+### Fine-grained and shared experts (the 2024+ refinement)
+
+More recent open-weight MoE models (the DeepSeek-MoE line being a widely-cited example) refined the basic design in two ways worth knowing for a current picture. First, **fine-grained experts**: instead of a few large experts, use many *smaller* ones and route to more of them per token (e.g., 8-of-64 rather than 2-of-8). The reasoning is combinatorial — with more, smaller experts, the number of possible expert *combinations* a token can be routed to grows enormously, giving the model finer-grained specialization for the same active parameter count. Second, **shared experts**: designate one or a few experts that *every* token always goes through, in addition to its routed experts. The shared expert absorbs the common, general-purpose computation every token needs (so the routed experts don't each have to redundantly relearn it), letting them specialize more cleanly. This fine-grained-plus-shared pattern has become a common template for high-efficiency MoE designs as of 2026, and is a good example of the incremental architectural refinement the field has continued to do on top of the basic Switch/Mixtral idea.
 
 ## Current frontier usage patterns
 
