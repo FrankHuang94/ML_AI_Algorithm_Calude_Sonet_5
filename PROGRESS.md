@@ -1,6 +1,12 @@
 # Build Progress (scratch file — not part of the published reference)
 
-## Status: BUILD COMPLETE
+## Status: BUILD COMPLETE + v2 OPUS REVIEW PASS COMPLETE
+
+The v2 pass (see CHANGELOG "v2 — Opus review-and-expand pass") reviewed every content file for correctness and expanded them for clarity: worked numeric examples, ~14 Mermaid diagrams plus many ASCII visuals, and genuinely current 2024-2025 material (Muon, WSD, flow matching, GRPO, VQ-VAE, tokenization/BPE, QK-norm, fine-grained MoE, DoRA, etc.). Content grew to ~78,000+ words. Glossary at ~105 terms, alphabetized. All internal links verified. All Mermaid blocks well-formed.
+
+---
+
+## (v1) Status: BUILD COMPLETE
 
 All 45 planned content files are written, README.md master index is built, glossary is populated and alphabetized, cross-links verified, and CHANGELOG.md summarizes the build. See CHANGELOG.md for the full summary.
 
