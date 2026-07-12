@@ -8,6 +8,29 @@ RLHF (Reinforcement Learning from Human Feedback) is the training methodology th
 
 ## The RLHF pipeline, end to end
 
+The classic RLHF pipeline is three stages, each producing an artifact the next stage consumes:
+
+```mermaid
+flowchart TD
+    PT["Pretrained base model<br/>(good at predicting text,<br/>bad at being an assistant)"] --> SFT
+    subgraph S1["Stage 1: Supervised fine-tuning (SFT)"]
+    SFT["Fine-tune on curated<br/>prompt → good-response examples"]
+    end
+    SFT --> RMGEN["Generate multiple responses<br/>per prompt"]
+    subgraph S2["Stage 2: Reward model training"]
+    RMGEN --> HUM["Humans rank/compare responses"]
+    HUM --> RM["Train reward model to<br/>predict human preferences"]
+    end
+    subgraph S3["Stage 3: RL policy optimization"]
+    POL["Policy (= the SFT model) generates a response"] --> SCORE["Reward model scores it"]
+    SCORE --> UPD["PPO updates the policy toward<br/>higher reward, with a KL leash<br/>back to the SFT model"]
+    UPD --> POL
+    end
+    RM --> SCORE
+    SFT --> POL
+    UPD --> FINAL["Aligned assistant model"]
+```
+
 ### Stage 1: Supervised fine-tuning (SFT)
 
 **Mechanism.** Before any RL happens, the pretrained model is first fine-tuned (see [finetuning-and-peft.md](finetuning-and-peft.md)) on a curated dataset of high-quality example conversations — prompts paired with the kind of response a human demonstrator considers good (helpful, well-formatted, appropriately cautious). This is standard supervised learning: the model is trained to directly imitate these human-written or human-approved example responses, using the same next-token cross-entropy loss as pretraining (see [loss-functions.md](../01-foundations/loss-functions.md)), just on this much smaller, curated, instruction-and-response-shaped dataset.
@@ -33,6 +56,10 @@ objective = 𝔼[reward_model_score] − β · D_KL(policy ‖ SFT_model)
 Walkthrough: without this penalty, the RL process has an incentive to exploit any imperfection in the (imperfect, learned-from-a-finite-sample) reward model — finding some narrow, possibly bizarre pattern of outputs that the reward model happens to score highly but that a human would not actually consider good (a failure mode generally called **reward hacking**, or more specifically here "reward model over-optimization"). The KL penalty acts as a leash, keeping the policy's behavior anchored reasonably close to the SFT model's more broadly-validated behavior, trading off some potential reward-model-score gains for keeping the policy's outputs recognizably reasonable.
 
 **Why this whole pipeline mattered.** RLHF, as popularized by InstructGPT (Ouyang et al., 2022) and then ChatGPT, was the methodology that took capable-but-unwieldy pretrained language models and turned them into the helpful, instruction-following assistants that defined the LLM product category from 2022 onward — see [08-history/timeline-2017-2023.md](../08-history/timeline-2017-2023.md) for this moment in the field's broader history.
+
+### GRPO — a simpler RL algorithm that became prominent for reasoning
+
+Worth knowing for a current picture: classic RLHF uses PPO, which requires training a separate **value model** (a "critic" — see [policy-gradient-methods.md](../07-reinforcement-learning/policy-gradient-methods.md)) alongside the policy to estimate how good each partial response is, roughly doubling the memory needed for the trained models. **GRPO (Group Relative Policy Optimization)**, introduced by DeepSeek and widely adopted since (especially for reasoning-focused training — see [rl-for-llms.md](../07-reinforcement-learning/rl-for-llms.md)), removes the separate value model with a simple trick: for each prompt, sample a *group* of several responses, score them all, and use the group's *average* score as the baseline that each response is measured against (a response better than its group's average gets a positive learning signal, worse gets negative). This "compare each answer to the average of its sibling answers" replaces the learned critic's job with a cheap on-the-fly statistic. The payoff is a meaningfully simpler, lower-memory RL loop, which made large-scale RL on verifiable rewards (see [rl-for-llms.md](../07-reinforcement-learning/rl-for-llms.md)) more practical — GRPO is one of the algorithms most associated with the 2024-2025 wave of strong open reasoning models.
 
 ## Direct Preference Optimization (DPO) — an RL-free alternative
 
@@ -84,5 +111,6 @@ Walkthrough: without this penalty, the RL process has an incentive to exploit an
 - Christiano et al., "Deep Reinforcement Learning from Human Preferences" (2017) — foundational RLHF methodology, predating its LLM application
 - Ouyang et al. (OpenAI), "Training language models to follow instructions with human feedback" (2022) [InstructGPT]
 - Rafailov et al., "Direct Preference Optimization: Your Language Model is Secretly a Reward Model" (2023)
+- Shao et al. (DeepSeek), "DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models" (2024) [GRPO]
 - Bai et al. (Anthropic), "Constitutional AI: Harmlessness from AI Feedback" (2022)
 - Bai et al. (Anthropic), "Training a Helpful and Harmless Assistant with Reinforcement Learning from Human Feedback" (2022)
