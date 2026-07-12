@@ -2,6 +2,23 @@
 
 Supervised learning is the task of learning a function from labeled examples — pairs of inputs and correct outputs — that generalizes to new, unseen inputs. This file covers the foundational classical (pre-deep-learning) algorithms for this task. They remain in wide, non-nostalgic use today, especially on tabular data (spreadsheet-like data with rows of examples and columns of named features), where deep learning frequently does *not* beat them (see [ensemble-methods.md](ensemble-methods.md) for why).
 
+The fastest way to build intuition for *how these classifiers differ in character* is to look at the shape of the **decision boundary** each one draws — the boundary is the dividing surface in feature space where the model switches from predicting one class to another. Picture a 2D dataset with two classes (`o` and `x`); here is roughly how each classifier separates them:
+
+```
+ Logistic regression      Decision tree           k-NN                  SVM (RBF kernel)
+ (one straight line)      (axis-aligned boxes)    (irregular, local)    (smooth curved margin)
+   o o o │ x x x            o o │ x x x             o o o⌐x x x            o o o ╱ x x x
+   o o o │ x x x            o o │ x x x             o o⌐x⌐x x x            o o ╱  x x x
+   o o o │ x x x          ──────┼─────             o⌐o x x⌐x x            o o│  x x x x
+   o o o │ x x x            o o o│x x             o o⌐o⌐o x x x            o o ╲  x x x
+         │ (a single       ──────┴─── (staircase   (boundary hugs        o o o ╲ x x x
+          linear cut)       of right angles)        individual points)   (one smooth curve)
+```
+
+Read off each algorithm's personality: logistic regression can only draw a single straight cut (a linear boundary); a decision tree draws a staircase of axis-aligned rectangles; k-NN's boundary is jagged and wraps tightly around individual training points; an SVM with an RBF kernel draws one smooth curve with as wide a margin as possible. When you read "this model can't capture nonlinearity without feature engineering," that just means "its boundary is stuck being a straight line." Keep this picture in mind as you read each entry below.
+
+A second framing worth internalizing up front, because it cuts across several of these algorithms: the distinction between **discriminative** and **generative** classifiers. A discriminative model (logistic regression, SVMs, trees) learns the boundary between classes directly — it answers "given these features, which class?" A generative model (Naive Bayes, and the probabilistic models in [probabilistic-models.md](probabilistic-models.md)) instead learns what each class's data *looks like* — it models "what features does a spam email tend to have?" — and then uses Bayes' rule to flip that around into a classification. Discriminative models usually win on raw predictive accuracy when data is plentiful; generative models can need less data and naturally produce calibrated probabilities and handle missing features. This distinction recurs throughout the repository, all the way up to the difference between how a classifier head and a generative language model are trained.
+
 ## Linear regression
 
 **Name & definition.** Linear regression predicts a continuous numeric output as a weighted sum of input features.
