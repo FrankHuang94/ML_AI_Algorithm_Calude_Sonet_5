@@ -26,22 +26,26 @@ Being honest, as this repository's quality bar requires, about why flows never b
 - Strengths: exact likelihood computation (not a bound or an implicit signal); exact invertibility gives clean encode/decode in both directions; theoretically elegant, well-grounded framework.
 - Limitations: architectural constraints (invertibility, tractable determinants) limit expressiveness relative to unconstrained generative architectures; has not matched GAN/diffusion-model sample quality on complex high-dimensional data; comparatively little large-scale industrial adoption relative to the other four generative model families in this section.
 
-**Current status.** Niche as of 2026 — a smaller, more specialized research area than GANs, VAEs, diffusion models, or autoregressive generation, used primarily where exact likelihoods matter or in specific scientific/density-estimation contexts, rather than as a general-purpose competitor for mainstream image/video/audio/text generation.
+**Current status.** Niche as of late 2026 — a smaller, more specialized research area than GANs, VAEs, diffusion models, or autoregressive generation, used primarily where exact likelihoods matter or in specific scientific/density-estimation contexts, rather than as a general-purpose competitor for mainstream image/video/audio/text generation. Where flow ideas *do* live on at scale is **flow matching** (and rectified flow): it learns a continuous "velocity field" that transports noise into data — a descendant of continuous-time normalizing flows that drops the invertible-layer and determinant constraints that held this family back — and it is now a common training objective for large image and video generators; it is covered in [diffusion-models.md](diffusion-models.md#flow-matching-and-rectified-flow-the-current-generation-training-objective).
 
 ## Comparison table
 
-| System | Year | Key Innovation | Still Relevant (2026)? |
+| System | Year | Key Innovation | Still Relevant (late 2026)? |
 |---|---|---|---|
 | RealNVP | 2016 | Coupling layers make deep invertible flows practical | Niche — foundational design, limited mainstream use |
 | Glow | 2018 | Invertible 1×1 convolutions, improved sample quality | Niche — same general status as RealNVP |
+| Flow matching / rectified flow | 2022-2023 | Learn a velocity field from noise to data; no invertible-layer constraint | Yes — widely used for large image/video models; covered in [diffusion-models.md](diffusion-models.md) |
 
 ## Relationship to other algorithms
 
 - Flow-based models' exact likelihood is a direct contrast to the VAE's approximate ELBO lower bound — see [vaes.md](vaes.md).
 - Their invertibility-driven training stability is a contrast to GAN adversarial instability — see [gans.md](gans.md).
+- Flow matching, the large-scale descendant of the continuous-flow idea, is covered with diffusion models in [diffusion-models.md](diffusion-models.md).
 - As a smaller-scale, more specialized family, flows are best understood in this file's comparative context alongside the other four generative model families in this section, rather than in isolation.
 
 ## Sources
 
 - Dinh, Sohl-Dickstein, Bengio, "Density estimation using Real NVP" (2016)
 - Kingma, Dhariwal, "Glow: Generative Flow with Invertible 1x1 Convolutions" (2018)
+- Chen, Rubanova, Bettencourt, Duvenaud, "Neural Ordinary Differential Equations" (2018) [continuous-time normalizing flows]
+- Lipman et al., "Flow Matching for Generative Modeling" (2022)

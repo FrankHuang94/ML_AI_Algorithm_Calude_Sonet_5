@@ -127,7 +127,7 @@ Typical defaults: β₁ = 0.9, β₂ = 0.999. Walkthrough: m tracks the recent a
 
 **The memory cost, made concrete.** Notice that Adam keeps *two* extra full-size buffers, m and v — one number each, per model parameter. This is the "optimizer state" referenced throughout this repository, and its size is easy to underestimate: for a model with N parameters trained in mixed precision, a common accounting is that the parameters themselves, their gradients, and Adam's two moment buffers together require on the order of 16 bytes per parameter (the exact figure depends on precision choices, but the key point is the multiplier). For a 70-billion-parameter model that's well over a terabyte of memory just for training state — far more than the model's own weights — which is precisely why [distributed-training.md](../05-training-methodology/distributed-training.md) spends so much effort sharding this state across devices, and why the cheaper-state optimizers below (Lion, Muon) are attractive at frontier scale.
 
-**Why it mattered.** Adam combines the two most useful properties from the prior decade of optimizer research (directional smoothing from momentum, per-parameter scaling from RMSProp) into one optimizer that works well "out of the box" across a very wide range of architectures and problems with minimal tuning. This made it the default choice for most of the 2015-2020 deep learning boom, and its descendant (AdamW, below) remains the default for training large language models as of 2026.
+**Why it mattered.** Adam combines the two most useful properties from the prior decade of optimizer research (directional smoothing from momentum, per-parameter scaling from RMSProp) into one optimizer that works well "out of the box" across a very wide range of architectures and problems with minimal tuning. This made it the default choice for most of the 2015-2020 deep learning boom, and its descendant (AdamW, below) remains the default for training large language models as of late 2026.
 
 **Current status.** AdamW (below) has effectively replaced plain Adam for large-scale training, but Adam is still extremely common in smaller-scale and non-LLM deep learning work.
 
@@ -145,7 +145,7 @@ Typical defaults: β₁ = 0.9, β₂ = 0.999. Walkthrough: m tracks the recent a
 
 Walkthrough: the adaptive gradient step and the "shrink everything a little" step are now independent operations, so weight decay behaves the way it's supposed to (a constant proportional pull toward zero) regardless of a parameter's gradient history.
 
-**Why it mattered.** This fixed a subtle but real bug in how Adam had been combined with regularization for years, and empirically produces noticeably better generalization (performance on data the model hasn't seen, as opposed to just memorizing training data) at negligible extra cost. This is why AdamW, not Adam, is the standard optimizer for essentially every major LLM pretraining run as of 2026.
+**Why it mattered.** This fixed a subtle but real bug in how Adam had been combined with regularization for years, and empirically produces noticeably better generalization (performance on data the model hasn't seen, as opposed to just memorizing training data) at negligible extra cost. This is why AdamW, not Adam, is still the standard optimizer for most major LLM pretraining runs as of late 2026 (Muon, below, is the first serious exception at frontier scale).
 
 **Current status.** Dominant. AdamW is the default optimizer choice for pretraining and fine-tuning almost every transformer-based model in production today.
 
@@ -163,7 +163,7 @@ Walkthrough: the adaptive gradient step and the "shrink everything a little" ste
 
 Walkthrough: every parameter moves by exactly the same magnitude per step (η) in the direction its momentum currently points — no per-parameter magnitude scaling at all. This is a much simpler update rule than Adam's, and uses half the optimizer state memory (no v to track), which matters at the scale of a 100B+ parameter model where optimizer state can be a large fraction of total memory.
 
-**Current status.** Used at some organizations for large-scale training, reported to match or slightly beat AdamW on some pretraining runs at lower memory cost, but has not displaced AdamW as the default; adoption is real but still a minority relative to AdamW as of 2026.
+**Current status.** Used at some organizations for large-scale training, reported to match or slightly beat AdamW on some pretraining runs at lower memory cost, but has not displaced AdamW as the default; adoption is real but still a minority relative to AdamW as of late 2026.
 
 ### Sophia
 
@@ -171,17 +171,28 @@ Walkthrough: every parameter moves by exactly the same magnitude per step (η) i
 
 **Core mechanism (brief).** Sophia is a lightweight approximation to a second-order method (see below) — it estimates curvature (how quickly the gradient itself is changing, i.e., roughly the diagonal of the Hessian, the matrix of second derivatives) cheaply and uses it to further adapt the per-parameter step size beyond what Adam's v term captures, with a clipping mechanism to keep the estimate stable.
 
-**Current status.** Reported speedups over AdamW in the original paper's pretraining experiments; adoption outside the original authors' benchmarks is limited as of 2026 — treat as promising but not (yet) an industry default.
+**Current status.** Reported speedups over AdamW in the original paper's pretraining experiments; adoption outside the original authors' benchmarks is limited as of late 2026 — treat as promising but not (yet) an industry default.
 
 ### Muon
 
-**Origin.** Jordan et al. (2024), with subsequent scaling and refinement work through 2024-2025.
+**Origin.** Jordan et al. (2024), with subsequent scaling and refinement work through 2024-2025; scaled to trillion-parameter training as **MuonClip** in Moonshot's Kimi K2 (July 2025).
 
-**Core mechanism (brief).** Muon is designed specifically for the 2D weight *matrices* inside a network (the large matrices in attention and feedforward layers — see [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md)), and treats their updates as a matrix rather than as a flat bag of independent numbers. It takes a momentum-averaged gradient and applies an **orthogonalization** step (approximated cheaply via a few iterations of a matrix polynomial, rather than an expensive exact decomposition) before using it as the update. Intuitively, this rebalances the update so that it pushes with more uniform strength across all the different "directions" the matrix can change in, rather than letting a few dominant directions absorb most of the step — which empirically lets training take more productive steps per unit of compute. Muon is typically paired with a standard optimizer like AdamW for the non-matrix parameters (embeddings, biases, normalization scales), which don't have the same 2D structure to exploit.
+**Core mechanism (brief).** Muon is designed specifically for the 2D weight *matrices* inside a network (the large matrices in attention and feedforward layers — see [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md)), and treats their updates as a matrix rather than as a flat bag of independent numbers. It takes a momentum-averaged gradient and applies an **orthogonalization** step — approximated cheaply with a few **Newton–Schulz iterations** (a short loop of matrix multiplications that pushes a matrix toward the nearest orthogonal one, i.e., sets all its singular values to roughly 1), rather than an expensive exact decomposition — before using it as the update. Intuitively, this rebalances the update so that it pushes with more uniform strength across all the different "directions" the matrix can change in, rather than letting a few dominant directions absorb most of the step — which empirically lets training take more productive steps per unit of compute. Muon is typically paired with a standard optimizer like AdamW for the non-matrix parameters (embeddings, biases, normalization scales), which don't have the same 2D structure to exploit.
 
-**Why it's worth including.** Muon is one of the first optimizers since Adam to see genuine, widely-reported traction for large-scale language model pretraining rather than remaining a benchmark curiosity — reported to improve compute efficiency at meaningful scale while also using less optimizer-state memory than Adam (it tracks only a momentum buffer for the matrices it handles). As of 2026 it represents the most credible recent challenger to AdamW's long dominance, though AdamW remains the safe default and Muon's track record is still much shorter.
+**Scaling it up: MuonClip and QK-clip (2025).** The main obstacle to using Muon at very large scale turned out to be a specific instability: **exploding attention logits**. An attention logit is the raw score q·k before the softmax (see [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md)); if the query and key weight matrices W_Q and W_K grow large, some logits become huge, the softmax saturates, and training suffers loss spikes or diverges. Moonshot's fix, used to train Kimi K2 (~1T total / 32B active parameters, a Mixture-of-Experts model — see [mixture-of-experts.md](../03-deep-learning-architectures/mixture-of-experts.md)), is **MuonClip** = Muon + **QK-clip**. In outline:
 
-**Current status.** Emerging; real and growing adoption for large-scale pretraining, but not yet the default, and still accumulating the years of broad validation AdamW has.
+```
+after each optimizer step, for each attention head h:
+    m_h = largest attention logit (q·k) that head h produced in this batch
+    if m_h > τ:                               (τ = a fixed threshold)
+        shrink W_Q,h and W_K,h by factors whose product is τ / m_h
+```
+
+Walkthrough: because a logit is (roughly) the product of a query and a key, scaling both weight matrices down so that the product shrinks by τ / m_h brings the largest logit back to the threshold, while leaving heads that are behaving normally untouched. Note what is being clipped: the *weights themselves*, after the update — not the gradient, as in ordinary gradient clipping (below). It is a targeted repair applied only where and when the problem appears. With this addition, Kimi K2 became the widely-cited demonstration that a Muon-family optimizer works at trillion-parameter scale.
+
+**Why it's worth including.** Muon is one of the first optimizers since Adam to see genuine, widely-reported traction for large-scale language model pretraining rather than remaining a benchmark curiosity — reported to improve compute efficiency at meaningful scale while also using less optimizer-state memory than Adam (it tracks only a momentum buffer for the matrices it handles). By late 2026 it has moved past "promising challenger": in addition to Kimi K2, DeepSeek's V4 technical report (April 2026, reported) states that the V4 models — up to 1.6T total parameters — were trained with Muon. AdamW nevertheless remains the most common default, and Muon's track record is still measured in a handful of frontier runs rather than years of broad use.
+
+**Current status.** Production-validated at frontier scale in at least two open-weight frontier model families (Kimi K2 via MuonClip; DeepSeek-V4, reported). Still not the general default — AdamW remains the safe, ubiquitous choice, especially for fine-tuning and smaller-scale training, and Muon itself still relies on AdamW for its non-matrix parameters.
 
 ### LAMB and LARS — large-batch training
 
@@ -200,7 +211,7 @@ The learning rate η is not usually held constant through training — nearly al
 - **Step decay** — drop η by a fixed factor (e.g., ×0.1) at pre-set epoch/step milestones. Simple, common in older computer-vision training recipes (see [cnn-family.md](../03-deep-learning-architectures/cnn-family.md)).
 - **Cosine annealing** — smoothly decay η following a cosine curve from an initial value down to (near) zero over the course of training. Widely used for LLM pretraining because it avoids the abrupt jumps of step decay and its shape is a single, easy-to-tune parameter (total steps).
 - **Linear warmup** — start η at (or near) zero and ramp it up linearly over the first portion of training (often 1-5% of total steps) before the main schedule kicks in. This matters because early in training, gradients (and Adam's variance estimates in particular) are noisy and poorly calibrated; jumping straight to a large η can cause the run to diverge before it stabilizes.
-- **Warmup + decay combinations** — the standard recipe for LLM pretraining today is linear (or sometimes shorter, aggressive) warmup followed by cosine decay (or, increasingly, a simpler linear decay) to a small fraction of the peak learning rate. This combined shape — ramp up, hold or gently decay, then decay more steeply — is close to universal across major pretraining runs as of 2026.
+- **Warmup + decay combinations** — the standard recipe for LLM pretraining today is linear (or sometimes shorter, aggressive) warmup followed by cosine decay (or, increasingly, a simpler linear decay) to a small fraction of the peak learning rate. This combined shape — ramp up, hold or gently decay, then decay more steeply — is close to universal across major pretraining runs as of late 2026.
 - **Warmup-Stable-Decay (WSD)** — a newer, increasingly popular variant that warms up, then holds the learning rate at a *constant* high value for the bulk of training, then decays sharply only at the very end. Its practical appeal is that the "stable" phase produces a usable checkpoint at any point along the way (you haven't committed to a fixed total training length the way cosine annealing does, which bakes the endpoint into the curve's shape), and you can branch off a short decay phase whenever you decide to stop — convenient when the final training budget isn't fixed in advance, and when you want to run and evaluate multiple candidate stopping points from one long stable run.
 
 A quick intuition for *why* schedules matter at all: the learning rate controls a tension between exploration and settling. Early on, you want relatively large steps to move quickly across the loss landscape toward a good region (but not so large you diverge — hence warmup easing you in). Late in training, you want small steps to settle precisely into a good minimum rather than bouncing around it (hence decay). The various schedules are just different-shaped answers to "how fast should I transition from the first regime to the second?"
@@ -209,7 +220,7 @@ A quick intuition for *why* schedules matter at all: the learning rate controls 
 
 **Definition.** Gradient clipping caps the magnitude of the gradient (or of each parameter's gradient) before applying an update, preventing any single step from being too large.
 
-**Why it matters.** Deep networks — especially recurrent ones (see [rnn-lstm-gru.md](../03-deep-learning-architectures/rnn-lstm-gru.md)) and large transformers early in training — can occasionally produce a gradient with enormous magnitude (a "gradient explosion" — the gradient's scale blows up multiplicatively as it's backpropagated through many layers or time steps, in contrast to the opposite failure mode, "vanishing gradients," where the scale shrinks toward zero instead). An enormous, un-clipped gradient can cause a single catastrophic update that destabilizes or destroys days of training progress. **Gradient norm clipping** — the standard approach — rescales the entire gradient vector so its overall norm (length) never exceeds a fixed threshold, preserving direction but capping magnitude. This is now a near-universal safety mechanism in LLM pretraining, applied every step regardless of whether an explosion is currently happening.
+**Why it matters.** Deep networks — especially recurrent ones (see [rnn-lstm-gru.md](../03-deep-learning-architectures/rnn-lstm-gru.md)) and large transformers early in training — can occasionally produce a gradient with enormous magnitude (a "gradient explosion" — the gradient's scale blows up multiplicatively as it's backpropagated through many layers or time steps, in contrast to the opposite failure mode, "vanishing gradients," where the scale shrinks toward zero instead). An enormous, un-clipped gradient can cause a single catastrophic update that destabilizes or destroys days of training progress. **Gradient norm clipping** — the standard approach — rescales the entire gradient vector so its overall norm (length) never exceeds a fixed threshold, preserving direction but capping magnitude. This is now a near-universal safety mechanism in LLM pretraining, applied every step regardless of whether an explosion is currently happening. (Not to be confused with QK-clip in the Muon section above, which rescales attention *weights* rather than gradients.)
 
 ## Second-order methods: L-BFGS and natural gradient
 
@@ -228,10 +239,10 @@ A quick intuition for *why* schedules matter at all: the learning rate controls 
 | Adagrad | 2011 | Per-parameter adaptive learning rate | Superseded (monotonic decay flaw) |
 | RMSProp | 2012 | Decaying-average adaptive scaling (fixes Adagrad) | Rare standalone; ancestor of Adam |
 | Adam | 2015 | Momentum + RMSProp-style scaling combined | Common, esp. outside LLM pretraining |
-| AdamW | 2019 | Decoupled weight decay from adaptive gradient step | Dominant default for LLM training |
+| AdamW | 2019 | Decoupled weight decay from adaptive gradient step | Dominant default for LLM training (Muon now a frontier-scale alternative) |
 | Lion | 2023 | Sign-based update, half the optimizer memory of Adam | Real but minority adoption |
 | Sophia | 2023 | Lightweight second-order curvature estimate | Promising, limited adoption |
-| Muon | 2024 | Orthogonalized matrix-aware updates, less state than Adam | Emerging; most credible recent AdamW challenger |
+| Muon / MuonClip | 2024 / 2025 | Orthogonalized (Newton–Schulz) matrix updates, less state than Adam; QK-clip for stability at scale | Production-validated at frontier scale (Kimi K2; DeepSeek-V4, reported); not yet the general default |
 | LAMB / LARS | 2017 / 2019 | Layer-wise learning rate rescaling for large batches | Standard for large-batch pretraining phases |
 | L-BFGS / Natural Gradient | Pre-deep-learning | True second-order/curvature-aware steps | Rare at scale — cost is prohibitive |
 
@@ -240,6 +251,7 @@ A quick intuition for *why* schedules matter at all: the learning rate controls 
 - Every optimizer here is used to minimize a loss function defined in [loss-functions.md](loss-functions.md).
 - Weight decay (used in AdamW) is a regularization technique — see [regularization-techniques.md](regularization-techniques.md) for the distinction between classic L2 regularization and decoupled weight decay in adaptive optimizers, discussed there in more depth.
 - LAMB/LARS large-batch training connects directly to [distributed-training.md](../05-training-methodology/distributed-training.md), which covers *why* large batches are needed (to use many accelerators in parallel) as opposed to *how* to make them stable (this file's concern).
+- Muon/MuonClip's trillion-scale validation came in a Mixture-of-Experts model — see [mixture-of-experts.md](../03-deep-learning-architectures/mixture-of-experts.md); QK-clip acts on the attention logits described in [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md).
 - Gradient clipping is especially relevant to recurrent architectures — see [rnn-lstm-gru.md](../03-deep-learning-architectures/rnn-lstm-gru.md) for the vanishing/exploding gradient problem in its original, most acute context.
 
 ## Sources
@@ -255,6 +267,8 @@ A quick intuition for *why* schedules matter at all: the learning rate controls 
 - Chen et al., "Symbolic Discovery of Optimization Algorithms" (2023) [Lion]
 - Liu et al., "Sophia: A Scalable Stochastic Second-Order Optimizer for Language Model Pre-training" (2023)
 - Jordan et al., "Muon: An optimizer for the hidden layers of neural networks" (2024) [Muon; reported and refined in subsequent scaling work]
+- Moonshot AI, Kimi K2 technical report (2025) [MuonClip / QK-clip; ~1T-parameter MoE]
+- DeepSeek-AI, DeepSeek-V4 technical report (April 2026, reported) [Muon used for V4 training]
 - You, Gitman, Ginsburg, "Large Batch Training of Convolutional Networks" (2017) [LARS]
 - You et al., "Large Batch Optimization for Deep Learning: Training BERT in 76 minutes" (2019) [LAMB]
 - Amari, "Natural Gradient Works Efficiently in Learning" (1998)

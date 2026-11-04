@@ -1,6 +1,6 @@
 # Speculative Decoding
 
-Speculative decoding speeds up autoregressive generation (see [autoregressive-generation.md](../04-generative-models/autoregressive-generation.md)) by restructuring *how* tokens are produced — without changing the model or the statistical distribution of its outputs at all. This file covers the draft-then-verify framing, why it preserves the exact output distribution, and two notable variants.
+Speculative decoding speeds up autoregressive generation (see [autoregressive-generation.md](../04-generative-models/autoregressive-generation.md)) by restructuring *how* tokens are produced — without changing the model or the statistical distribution of its outputs at all. This file covers the draft-then-verify framing, why it preserves the exact output distribution, and the main families of drafters: separate draft models, extra heads on the target model (Medusa, the EAGLE family, and Multi-Token Prediction modules trained into the model during pretraining), and draft-free lookahead decoding. It closes with diffusion language models, which pursue the same goal — more than one token per expensive step — by a different and *non*-exact route.
 
 ## The draft-model-plus-verification framing
 
@@ -42,6 +42,34 @@ Walkthrough: instead of paying the full cost of the large model for every single
 
 **Why it mattered.** Medusa avoids the operational complexity of training, maintaining, and keeping a separate draft model well-matched to the target model over time (as the target model is updated or fine-tuned, a separate draft model can drift out of alignment with it) by baking the "drafting" capability directly into the target model itself.
 
+## The EAGLE family (EAGLE, EAGLE-2, EAGLE-3)
+
+**Name & definition.** EAGLE is a speculative-decoding method whose drafter is a small extra network attached to the target model that works at the level of the target's internal **features** (its hidden-state vectors — the model's internal representation of each position) rather than at the level of tokens.
+
+**Origin.** Li, Wei, Zhang, Zhang, "EAGLE: Speculative Sampling Requires Rethinking Feature Uncertainty" (2024); EAGLE-2 (2024) added dynamic draft trees; EAGLE-3 (Mar 2025) is the current version.
+
+**Core mechanism.** A token-level drafter has to re-derive, from scratch and with far less capacity, everything the big model already "knows" about the context. EAGLE's draft head instead takes the target model's own hidden states for the tokens so far — a rich summary the target computed anyway — and needs only one lightweight layer on top to guess what comes next; the target model's own output layer then turns the guess into candidate tokens. Candidates are arranged as a **draft tree** (several alternative continuations branching from each position) so that one verification pass can test many possibilities at once; EAGLE-2 grows this tree adaptively, expanding branches where the drafter is confident.
+
+EAGLE-3 makes two changes:
+- **Multi-layer features.** It feeds the draft head features from several depths of the target (low, middle, and high layers), not only the top layer, giving the drafter both surface-level and abstract information.
+- **"Training-time test."** During training, the draft head is fed its *own* earlier predictions — exactly as it will be when it drafts several tokens in a row at inference — instead of always being handed the true features. This removes the mismatch between "trained on perfect inputs" and "used on its own imperfect outputs," which otherwise makes later tokens in a draft increasingly unreliable.
+
+**Why it mattered.** Attaching the drafter to the target's features was reported to give substantially higher acceptance rates than a separate small draft model of similar cost, without the operational burden of keeping a separate model aligned. Verification is unchanged, so the output distribution is still exactly the target model's.
+
+**Current status (late 2026).** Widely reported as one of the default speculative-decoding choices in open-source serving stacks (vLLM and SGLang both support EAGLE-style drafters); the drafter must be trained per target model.
+
+## Multi-Token Prediction (MTP) heads reused as drafters
+
+**Name & definition.** A **Multi-Token Prediction** objective trains a model, during pretraining, to predict not only the next token but also one or more tokens further ahead, using small extra prediction modules on top of the main network.
+
+**Origin.** Gloeckle et al. (Meta), "Better & Faster Large Language Models via Multi-token Prediction" (2024) studied MTP as a training objective; DeepSeek-V3 (Dec 2024) used an MTP objective in a frontier-scale model.
+
+**Core mechanism.** In DeepSeek-V3, the MTP module is trained as part of the main pretraining objective — the extra prediction targets give the model a denser training signal per sequence. At inference the module can simply be dropped, *or* it can be kept and reused as a speculative-decoding drafter: it proposes the token(s) after next, and the main model verifies them in its next forward pass exactly as in classic speculative decoding.
+
+**How it differs from Medusa.** Medusa's heads are bolted on *after* training, and each predicts its offset independently from the same hidden state. An MTP module is trained *jointly* with the model from the start, and in DeepSeek-V3's design the modules are chained sequentially — each builds on the previous depth's representation rather than predicting independently — keeping the causal chain intact. The practical upshot: the drafter is a free by-product of pretraining and is automatically matched to the target model.
+
+**Status.** Used in the DeepSeek line; how much speedup it delivers depends, as always, on the acceptance rate for the workload.
+
 ## Lookahead decoding
 
 **Origin.** Fu et al., "Break the Sequential Dependency of LLM Inference Using Lookahead Decoding" (2024).
@@ -50,9 +78,17 @@ Walkthrough: instead of paying the full cost of the large model for every single
 
 **Why it mattered.** By avoiding the need for any auxiliary model or architecture change, lookahead decoding offers speedups usable directly with an existing, unmodified target model, trading some additional compute per step (from generating and refining multiple guesses at once) for fewer total sequential steps.
 
+## A different route: parallel decoding in diffusion language models
+
+Everything above keeps an autoregressive target model and only changes the *procedure* for producing its tokens, which is why the output distribution is preserved exactly. **Diffusion language models (dLLMs)** chase the same goal — more than one token per expensive model call — by changing the *model* instead. A dLLM starts from a sequence of fully masked (blank) positions and fills many of them in parallel over a number of refinement steps, in the spirit of image diffusion models (see [diffusion-models.md](../04-generative-models/diffusion-models.md)). Because the number of refinement steps can be smaller than the number of tokens, generation can be much faster per token.
+
+Examples: LLaDA (an open 8B masked-diffusion language model, 2025), Inception Labs' Mercury (2025), and Google's Gemini Diffusion (an experimental model announced May 2025). Mercury 2 (Feb 2026) was marketed as the first reasoning-capable dLLM at roughly 1,000 tokens/second — a vendor claim, not an independent measurement.
+
+**The key contrast with speculative decoding.** A dLLM is a *different model* with its own output distribution; there is no "exact, same output as the slow model" guarantee, and fewer refinement steps generally trade quality for speed. Whether dLLMs can match strong autoregressive models on quality at scale was still an open question as of late 2026. (One ICML 2026 Outstanding Paper, "The Flexibility Trap," argued that dLLMs' ability to generate in arbitrary order is less valuable than often assumed — a reminder that the case for dLLMs rests mainly on speed, not on order flexibility.)
+
 ## Practical speedup figures — qualitative, not overclaimed
 
-Per this repository's quality bar, this section deliberately avoids stating precise speedup multipliers as universal facts, since actual speedup depends heavily on how well the draft model (or Medusa's heads, or lookahead decoding's guesses) matches the target model's actual behavior on the specific kind of text being generated — highly predictable text (structured, templated, or low-entropy output) sees larger speedups than highly creative or unpredictable text, where the draft model's guesses are accepted less often. What can be said qualitatively and with confidence: speculative decoding and its variants are widely reported to provide meaningful, sometimes substantial, wall-clock generation speedups in typical production workloads, with zero impact on output quality/distribution — which is precisely why these techniques have seen broad, rapid adoption across production LLM serving systems as of 2026, in contrast to techniques (quantization, pruning, distillation) that require an explicit quality-for-speed tradeoff decision.
+Per this repository's quality bar, this section deliberately avoids stating precise speedup multipliers as universal facts, since actual speedup depends heavily on how well the draft model (or Medusa's heads, or lookahead decoding's guesses) matches the target model's actual behavior on the specific kind of text being generated — highly predictable text (structured, templated, or low-entropy output) sees larger speedups than highly creative or unpredictable text, where the draft model's guesses are accepted less often. What can be said qualitatively and with confidence: speculative decoding and its variants are widely reported to provide meaningful, sometimes substantial, wall-clock generation speedups in typical production workloads, with zero impact on output quality/distribution — which is precisely why these techniques have seen broad, rapid adoption across production LLM serving systems as of late 2026, in contrast to techniques (quantization, pruning, distillation) that require an explicit quality-for-speed tradeoff decision. Drafters attached to the target model (EAGLE-style heads, MTP modules) have become popular precisely because they avoid maintaining a separate draft model. The value of all of this has grown with reasoning models: when a model writes thousands of "thinking" tokens before answering, decoding speed dominates the user's wait (see [serving-and-batching.md](serving-and-batching.md)).
 
 ## Comparison table
 
@@ -61,12 +97,17 @@ Per this repository's quality bar, this section deliberately avoids stating prec
 | Classic speculative decoding | Yes | No | Small draft model proposes, large model verifies in parallel |
 | Medusa | No (extra heads on target model) | No | Multiple built-in prediction heads propose, tree-verified |
 | Lookahead decoding | No | No | Parallel iterative refinement of multiple future-token guesses |
+| EAGLE / EAGLE-3 | No (lightweight draft head on the target's features) | No | Feature-level drafting from multi-layer hidden states; draft tree verified in one pass |
+| MTP module as drafter | No (module trained with the model during pretraining) | No | Extra prediction module from pretraining proposes the next-next token(s) |
+| Diffusion LM parallel decoding | Not applicable (a different kind of model) | Yes — not an exact speedup of any autoregressive model | Iteratively unmasks many positions in parallel |
 
 ## Relationship to other algorithms
 
 - Speculative decoding operates on top of, and is fully compatible with, the KV cache management techniques in [kv-cache-and-attention-optimization.md](kv-cache-and-attention-optimization.md).
 - It is a complementary, stackable technique alongside quantization and pruning/distillation (see [quantization.md](quantization.md), [pruning-and-distillation.md](pruning-and-distillation.md)) — those change the model itself; speculative decoding changes only the generation *procedure*.
-- Serving systems combine speculative decoding with the batching strategies in [serving-and-batching.md](serving-and-batching.md) to maximize overall throughput.
+- Serving systems combine speculative decoding with the batching strategies in [serving-and-batching.md](serving-and-batching.md) to maximize overall throughput. Speculative decoding speeds up the memory-bandwidth-bound *decode* phase in particular, because verifying several tokens in one pass reuses the same weight reads.
+- Multi-Token Prediction is a pretraining objective (see [pretraining-strategies.md](../05-training-methodology/pretraining-strategies.md)) whose by-product is a drafter; DeepSeek-V3, where it was used at scale, is a Mixture-of-Experts model (see [mixture-of-experts.md](../03-deep-learning-architectures/mixture-of-experts.md)).
+- Diffusion language models (see [diffusion-models.md](../04-generative-models/diffusion-models.md)) are an alternative, non-exact route to parallel token generation.
 
 ## Sources
 
@@ -74,3 +115,12 @@ Per this repository's quality bar, this section deliberately avoids stating prec
 - Chen et al., "Accelerating Large Language Model Decoding with Speculative Sampling" (2023)
 - Cai et al., "Medusa: Simple LLM Inference Acceleration Framework with Multiple Decoding Heads" (2024)
 - Fu, Bai, Zhao, et al., "Break the Sequential Dependency of LLM Inference Using Lookahead Decoding" (2024)
+- Li, Wei, Zhang, Zhang, "EAGLE: Speculative Sampling Requires Rethinking Feature Uncertainty" (2024)
+- Li et al., "EAGLE-2: Faster Inference of Language Models with Dynamic Draft Trees" (2024)
+- Li et al., "EAGLE-3: Scaling up Inference Acceleration of Large Language Models via Training-Time Test" (2025)
+- Gloeckle et al., "Better & Faster Large Language Models via Multi-token Prediction" (2024)
+- DeepSeek-AI, "DeepSeek-V3 Technical Report" (2024) [MTP objective; MTP module reusable for speculative decoding]
+- Nie et al., "Large Language Diffusion Models" (2025) [LLaDA]
+- Inception Labs, Mercury (2025) and Mercury 2 (Feb 2026) announcements [throughput figures are vendor claims]
+- Google DeepMind, Gemini Diffusion (experimental, announced May 2025)
+- "The Flexibility Trap: Rethinking the Value of Arbitrary Order in Diffusion Language Models," ICML 2026 Outstanding Paper

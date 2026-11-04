@@ -6,8 +6,10 @@ This is a reference knowledge base covering the algorithms and techniques that m
 
 1. **What exists** — a catalog of every algorithm/technique of real importance in current ML/AI training and inference, not just deep learning.
 2. **How we got here** — the development lineage of each major algorithm family: who introduced it, what problem it solved, and what it replaced.
-3. **Where things stand now** — current state-of-the-art usage as of mid-2026, and which algorithms actually dominate in which regimes.
+3. **Where things stand now** — current state-of-the-art usage as of late 2026 (November 2026), and which algorithms actually dominate in which regimes.
 4. **Where things are headed** — near-term (6-18 month) and longer-term (2-5 year) trajectories, explicitly labeled as informed speculation rather than fact.
+
+> **Currency note:** a v3 currency update was done in November 2026, bringing status lines, examples, and sources up to date with developments through that month.
 
 This is a single, coherent reference — not a swarm of disconnected notes. Every file follows the same structural conventions (below) so that the repository reads consistently whether you start at the README or drop into a single file from a search result.
 
@@ -42,7 +44,7 @@ Every algorithm or technique entry in this repository — whether it's an entire
 2. **Origin** — year introduced, original paper/authors, and the problem it was designed to solve
 3. **Core mechanism** — plain-language explanation first, then the key equation or pseudocode, then a plain-English walkthrough of that equation
 4. **Why it mattered** — what it improved on or replaced, and what specifically was broken or limited before it
-5. **Current status** — still dominant / niche / superseded / experimental, as of mid-2026
+5. **Current status** — still dominant / niche / superseded / experimental, as of late 2026
 6. **Strengths & limitations** — an honest bullet list of tradeoffs, no marketing language
 7. **Where it's used today** — concrete examples: model families, production systems, problem domains
 8. **Relationship to other algorithms** — explicit links to related or competing entries elsewhere in the repository
@@ -56,7 +58,7 @@ Minor or closely related techniques get a lighter version of this template rathe
 | 2 | Origin | Year, authors/paper, problem it solved |
 | 3 | Core mechanism | Plain-language → equation/pseudocode → plain-English walkthrough |
 | 4 | Why it mattered | What it replaced or improved on |
-| 5 | Current status | Dominant / niche / superseded / experimental (mid-2026) |
+| 5 | Current status | Dominant / niche / superseded / experimental (late 2026) |
 | 6 | Strengths & limitations | Honest tradeoffs, no marketing language |
 | 7 | Where it's used today | Concrete model families, systems, domains |
 | 8 | Relationship to other algorithms | Explicit cross-links |

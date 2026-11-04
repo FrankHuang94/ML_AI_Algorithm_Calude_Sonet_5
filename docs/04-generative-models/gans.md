@@ -64,7 +64,7 @@ This is worth being specific about, since it's an important, concrete case study
 - **Likelihood-based training.** Diffusion's training objective is grounded in a probabilistic framework with a much cleaner theoretical connection to how well the model's distribution matches the true data distribution, whereas a GAN's adversarial signal is only an indirect, implicit proxy for the same goal — the discriminator's judgment at any given point in training is a noisy, evolving target, not a fixed, well-understood objective.
 - **Scaling behavior.** Diffusion models have, empirically, scaled to larger, more diverse, higher-resolution generation tasks (including text-to-image generation trained on enormous, highly varied datasets) more gracefully and predictably than GANs have, which struggled more with training stability as task complexity and dataset diversity grew.
 
-**Current status of GANs overall.** Niche/superseded specifically for open-domain, large-scale image generation as of 2026 (the space diffusion models now dominate — see [diffusion-models.md](diffusion-models.md)), but GANs remain in genuine use for specific narrower applications — real-time or resource-constrained generation (a trained GAN generator is typically a single fast forward pass, without diffusion's characteristic multi-step iterative sampling process — see [diffusion-models.md](diffusion-models.md)), certain image-to-image translation and editing tasks, and some specialized domains (like the face-generation/editing niche StyleGAN excels at) where their specific properties remain valuable.
+**Current status of GANs overall.** Niche/superseded specifically for open-domain, large-scale image generation as of late 2026 (the space diffusion models now dominate — see [diffusion-models.md](diffusion-models.md)), but GANs remain in genuine use for specific narrower applications — real-time or resource-constrained generation (a trained GAN generator is typically a single fast forward pass, without diffusion's characteristic multi-step iterative sampling process — see [diffusion-models.md](diffusion-models.md)), certain image-to-image translation and editing tasks, and some specialized domains (like the face-generation/editing niche StyleGAN excels at) where their specific properties remain valuable.
 
 ## Strengths & limitations
 
@@ -73,7 +73,7 @@ This is worth being specific about, since it's an important, concrete case study
 
 ## Comparison table
 
-| System | Year | Key Innovation | Still Relevant (2026)? |
+| System | Year | Key Innovation | Still Relevant (late 2026)? |
 |---|---|---|---|
 | Original GAN | 2014 | Adversarial minimax training framework | Historical/foundational |
 | DCGAN | 2015 | Stable convolutional GAN architecture guidelines | Influential template; rarely used directly today |
