@@ -28,6 +28,7 @@ A pass to bring the whole repository up to date with developments through Novemb
 
 **Synthesis and housekeeping**
 - Comparison tables: new rows (hybrid linear attention, dLLMs, MLA, sparse/compressed attention, FP8/FP4, disaggregated serving), a new LLM post-training table, new cost levers, and a section on inference compute as a scaling axis; decision guide updated (TabPFN branch, Muon, GRPO variants, on-policy distillation, long-context attention options).
+- English content grew from ~78,000 to ~109,000 words. All 2,772 internal links across the English and Chinese trees verified to resolve; Mermaid/code fences checked for English/Chinese parity.
 - Taxonomy map extended with the new nodes and two new cross-cutting relationships. README descriptions and currency note updated.
 - Glossary grew from 105 to 147 terms, alphabetized, with a new "N" section; several existing entries updated (Muon, GRPO, test-time compute, world model).
 - Chinese translation: every changed English file is mirrored. Many touched Chinese files that were previously low-quality machine translation were re-translated in full (timeline, roadmaps, comparison tables, RL files, state space models, MoE, and others); the Chinese taxonomy mindmap's lost indentation and the glossary's garbled letter table were fixed.
