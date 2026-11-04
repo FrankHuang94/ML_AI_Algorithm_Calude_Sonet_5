@@ -13,6 +13,7 @@ mindmap
       Optimization
         SGD/Momentum
         Adam family
+        Muon
         Second-order methods
       Regularization
         Dropout
@@ -28,6 +29,7 @@ mindmap
       Ensembles
         Random Forest
         Gradient Boosting
+        Tabular foundation models
       Unsupervised
         k-means
         PCA/UMAP
@@ -42,14 +44,19 @@ mindmap
       Transformers
         Self-attention
         Encoder/decoder variants
+        Gated attention / hyper-connections
       Mixture of Experts
+        Fine-grained + shared experts
       State Space Models
         Mamba
+        Hybrid linear attention (Gated DeltaNet)
       Graph Neural Networks
     Generative Models
       GANs
       VAEs
       Diffusion Models
+        Flow matching
+        Diffusion language models
       Autoregressive Generation
       Flow-Based Models
     Training Methodology
@@ -58,23 +65,32 @@ mindmap
         LoRA/QLoRA
       RLHF and Alignment
         DPO
+        GRPO family
       Distributed Training
         FSDP/ZeRO
     Inference Optimization
       Quantization
+        FP8 / MXFP4 / NVFP4
       Pruning and Distillation
+        On-policy distillation
       KV Cache and Attention
         FlashAttention
         GQA/MQA
+        MLA
+        Sparse attention
       Speculative Decoding
+        EAGLE / MTP drafters
       Serving and Batching
+        Prefill/decode disaggregation
     Reinforcement Learning
       Value-Based
         DQN
       Policy Gradient
         PPO
       Model-Based RL
+        World models (Genie, Dreamer)
       RL for LLMs
+        Verifiable rewards and reasoning models
 ```
 
 ## Cross-cutting relationships
@@ -88,6 +104,8 @@ The mindmap above groups by section, but many of the most important relationship
 - **RLHF is where `07-reinforcement-learning` and `05-training-methodology` merge.** The policy-gradient theory in `07-reinforcement-learning/policy-gradient-methods.md` (especially PPO) is the RL engine underneath `05-training-methodology/rlhf-and-alignment.md`; `07-reinforcement-learning/rl-for-llms.md` is written specifically as the bridge between the two.
 - **Generative model families are competing solutions to the same problem** (model a data distribution well enough to sample new realistic examples from it): GANs, VAEs, diffusion models, autoregressive models, and flow-based models are five different answers, and `04-generative-models/diffusion-models.md` and `04-generative-models/gans.md` both explain, from their own side, why diffusion displaced GANs for image generation.
 - **Inference optimization techniques stack.** Quantization, pruning/distillation, KV-cache optimization, speculative decoding, and serving/batching are not mutually exclusive alternatives — production LLM serving systems combine several at once. `10-comparison-tables/compute-cost-comparison.md` treats them as a combinable stack rather than a single choice.
+- **Long-context cost is where architectures and inference optimization merged (2024-2026).** MLA and sparse attention (`06-inference-optimization/kv-cache-and-attention-optimization.md`) and hybrid linear-attention layouts (`03-deep-learning-architectures/state-space-models.md`) are architecture decisions made at pretraining time *for the sake of* serving cost — the old boundary between "model design" and "inference optimization" has largely dissolved.
+- **Distillation became a post-training method, not just a compression method.** On-policy distillation (`06-inference-optimization/pruning-and-distillation.md`) is now used to merge RL-trained specialists (`07-reinforcement-learning/rl-for-llms.md`), linking the inference and RL sections.
 - **Scaling laws connect architecture, pretraining, and roadmaps.** The Kaplan et al. and Chinchilla scaling laws (`03-deep-learning-architectures/transformer-architecture.md` and `05-training-methodology/pretraining-strategies.md`) are also the empirical basis for the extrapolations in `09-roadmaps/near-term-outlook.md`.
 
 ## Where to go next

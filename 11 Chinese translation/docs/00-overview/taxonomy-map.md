@@ -8,73 +8,89 @@
 
 ```mermaid
 mindmap
-root((ML/AI Algorithms))
-Foundations
-Optimization
-SGD/Momentum
-Adam family
-Second-order methods
-Regularization
-Dropout
-Norm layers
-Loss functions
-Cross-entropy
-KL divergence
-Classical ML
-Supervised
-Linear/Logistic Regression
-Decision Trees
-SVM
-Ensembles
-Random Forest
-Gradient Boosting
-Unsupervised
-k-means
-PCA/UMAP
-Probabilistic
-HMM
-GMM + EM
-Deep Architectures
-CNNs
-ResNet lineage
-RNN/LSTM/GRU
-Pre-Transformer attention
-Transformers
-Self-attention
-Encoder/decoder variants
-Mixture of Experts
-State Space Models
-Mamba
-Graph Neural Networks
-Generative Models
-GANs
-VAEs
-Diffusion Models
-Autoregressive Generation
-Flow-Based Models
-Training Methodology
-Pretraining
-Fine-tuning and PEFT
-LoRA/QLoRA
-RLHF and Alignment
-DPO
-Distributed Training
-FSDP/ZeRO
-Inference Optimization
-Quantization
-Pruning and Distillation
-KV Cache and Attention
-FlashAttention
-GQA/MQA
-Speculative Decoding
-Serving and Batching
-Reinforcement Learning
-Value-Based
-DQN
-Policy Gradient
-PPO
-Model-Based RL
-RL for LLMs
+  root((ML/AI Algorithms))
+    Foundations
+      Optimization
+        SGD/Momentum
+        Adam family
+        Muon
+        Second-order methods
+      Regularization
+        Dropout
+        Norm layers
+      Loss functions
+        Cross-entropy
+        KL divergence
+    Classical ML
+      Supervised
+        Linear/Logistic Regression
+        Decision Trees
+        SVM
+      Ensembles
+        Random Forest
+        Gradient Boosting
+        Tabular foundation models
+      Unsupervised
+        k-means
+        PCA/UMAP
+      Probabilistic
+        HMM
+        GMM + EM
+    Deep Architectures
+      CNNs
+        ResNet lineage
+      RNN/LSTM/GRU
+        Pre-Transformer attention
+      Transformers
+        Self-attention
+        Encoder/decoder variants
+        Gated attention / hyper-connections
+      Mixture of Experts
+        Fine-grained + shared experts
+      State Space Models
+        Mamba
+        Hybrid linear attention (Gated DeltaNet)
+      Graph Neural Networks
+    Generative Models
+      GANs
+      VAEs
+      Diffusion Models
+        Flow matching
+        Diffusion language models
+      Autoregressive Generation
+      Flow-Based Models
+    Training Methodology
+      Pretraining
+      Fine-tuning and PEFT
+        LoRA/QLoRA
+      RLHF and Alignment
+        DPO
+        GRPO family
+      Distributed Training
+        FSDP/ZeRO
+    Inference Optimization
+      Quantization
+        FP8 / MXFP4 / NVFP4
+      Pruning and Distillation
+        On-policy distillation
+      KV Cache and Attention
+        FlashAttention
+        GQA/MQA
+        MLA
+        Sparse attention
+      Speculative Decoding
+        EAGLE / MTP drafters
+      Serving and Batching
+        Prefill/decode disaggregation
+    Reinforcement Learning
+      Value-Based
+        DQN
+      Policy Gradient
+        PPO
+      Model-Based RL
+        World models (Genie, Dreamer)
+      RL for LLMs
+        Verifiable rewards and reasoning models
 ```
 
 ## 横切关系
@@ -88,6 +104,8 @@ RL for LLMs
 - **RLHF是`07-reinforcement-learning`和`05-training-methodology`合并的地方。** `07-reinforcement-learning/policy-gradient-methods.md`（尤其是PPO）中的策略梯度理论是`05-training-methodology/rlhf-and-alignment.md`底层的RL引擎； `07-reinforcement-learning/rl-for-llms.md`被专门写为两者之间的桥梁。
 - **生成模型系列是同一问题的竞争解决方案**（对数据分布进行足够好的建模，以便从中采样新的现实示例）：GAN、VAE、扩散模型、自回归模型和基于流的模型是五个不同的答案，`04-generative-models/diffusion-models.md` 和 `04-generative-models/gans.md` 都从自己的角度解释了为什么扩散取代了 GAN 来生成图像。
 - **推理优化技术堆栈。** 量化、修剪/蒸馏、KV 缓存优化、推测性解码和服务/批处理并不是相互排斥的替代方案 - 生产 LLM 服务系统同时结合了多个替代方案。 `10-comparison-tables/compute-cost-comparison.md` 将它们视为可组合的堆栈而不是单一选择。
+- **长上下文成本是架构与推理优化融合之处（2024-2026 年）。** MLA 和稀疏注意力（`06-inference-optimization/kv-cache-and-attention-optimization.md`）以及混合线性注意力布局（`03-deep-learning-architectures/state-space-models.md`）都是在预训练阶段*为了*服务成本而做出的架构决策——"模型设计"与"推理优化"之间过去的界线已基本消失。
+- **蒸馏成为一种后训练方法，而不仅仅是压缩方法。** 在线策略蒸馏（`06-inference-optimization/pruning-and-distillation.md`）如今被用来合并经 RL 训练的专家模型（`07-reinforcement-learning/rl-for-llms.md`），把推理优化章节和强化学习章节联系在一起。
 - **缩放法则连接架构、预训练和路线图。** Kaplan 等人。 Chinchilla 缩放定律（`03-deep-learning-architectures/transformer-architecture.md` 和 `05-training-methodology/pretraining-strategies.md`）也是 `09-roadmaps/near-term-outlook.md` 中外推的经验基础。
 
 ## 下一步去哪里
