@@ -1,6 +1,6 @@
 # Ensemble Methods
 
-An ensemble combines many individually weak or imperfect models into one stronger predictor. This family — particularly gradient-boosted decision trees — is the single most important piece of context for understanding why deep learning has *not* taken over tabular data (data organized in rows/columns with a mix of numeric and categorical features, like a spreadsheet or a database table), even in 2026.
+An ensemble combines many individually weak or imperfect models into one stronger predictor. This family — particularly gradient-boosted decision trees — is the single most important piece of context for understanding why deep learning has *not* taken over tabular data (data organized in rows/columns with a mix of numeric and categorical features, like a spreadsheet or a database table), even in late 2026.
 
 Almost everything in this file is one of two philosophies, and the difference between them is the single most important thing to understand here: **bagging** trains many models *in parallel and independently*, then averages them to cancel out their random errors; **boosting** trains many models *in sequence*, each one focused on fixing the mistakes the previous ones made. The diagram makes the contrast concrete:
 
@@ -73,7 +73,7 @@ Walkthrough: instead of hand-crafting how to correct mistakes (as AdaBoost does 
 
 **Why it mattered.** This generalization made boosting applicable to regression, ranking, and any other task with a sensible loss function, and produced the single best-performing family of algorithms for tabular data through the 2010s and into the 2020s.
 
-**Current status.** Dominant for tabular data as of 2026, primarily via its modern, heavily-optimized implementations below.
+**Current status.** Dominant for tabular data as of late 2026, primarily via its modern, heavily-optimized implementations below.
 
 ### XGBoost
 
@@ -123,15 +123,38 @@ Walkthrough: instead of hand-crafting how to correct mistakes (as AdaBoost does 
 | LightGBM | Fastest on large data | Low | Large tabular datasets, fast iteration |
 | CatBoost | Fast; efficient with categoricals | Low | Categorical-feature-heavy tabular data |
 | Stacking/blending | Slow (trains multiple models + meta-model) | Very low | Competitions; occasionally production when justified |
+| TabPFN v2 (not an ensemble; tabular foundation model) | No training on your data (one forward pass); slower per prediction | Very low | Small tables (up to ~10k rows) |
+
+## A challenger for small tables: TabPFN v2 (tabular foundation models)
+
+**Name & definition.** **TabPFN** is a Transformer-based **tabular foundation model**: a single network, pretrained once, that makes predictions on a brand-new small table without being trained on that table at all. "PFN" stands for **Prior-Data Fitted Network** — a network fitted, during pretraining, to data drawn from a designed *prior* (a deliberately specified distribution over possible datasets).
+
+**Origin.** Hollmann et al. introduced TabPFN in 2022 (ICLR 2023) for very small classification problems; **TabPFN v2** (Hollmann et al., *Nature*, January 2025) scaled the idea up to small datasets of up to roughly 10,000 rows, for both classification and regression.
+
+**Core mechanism.** Two phases, and the second one has no gradient training at all:
+
+1. **Pretraining (done once, by the authors):** generate millions of *synthetic* tabular datasets from randomly constructed data-generating processes, and train a Transformer to take "a table of labeled training rows plus some unlabeled test rows" as input and output predictions for the test rows.
+2. **Use (on your data):** feed your entire small training table and the rows you want predicted into the network as one input; a single forward pass returns the predictions. This is **in-context learning** — the "learning" happens inside the forward pass, by attending to your labeled rows as context, the same way an LLM picks up a pattern from examples in its prompt.
+
+Walkthrough: because the network has seen millions of different synthetic datasets during pretraining, it has effectively learned a general-purpose procedure for "given these labeled rows, what is the best guess for the new rows?" — approximately what a Bayesian would predict under the designed prior. There is no per-dataset hyperparameter search, which is exactly the slow, fiddly part of getting the best out of gradient-boosted trees.
+
+**Why it mattered.** TabPFN v2 was reported to beat tuned gradient-boosted trees on small datasets, producing its predictions in seconds — the first widely noticed case of a deep-learning model beating GBDTs on their home turf, albeit only on the small-data end of it.
+
+**Strengths & limitations.**
+- Strengths: strong accuracy on small tables; no training or hyperparameter tuning on the user's data; fast end to end at small scale.
+- Limitations: built for small data (up to roughly 10k rows) — attention over every row of the table gets expensive as tables grow, which is precisely where GBDTs shine; each prediction requires a large Transformer forward pass rather than a few cheap tree lookups, which matters for high-volume, low-latency production scoring; less mature tooling and less interpretable than tree ensembles.
+
+**Current status.** A credible challenger for **small** tabular datasets as of late 2026; gradient-boosted trees (XGBoost, LightGBM, CatBoost) remain the default for **medium and large** tabular data.
 
 ## Why tabular data still belongs to trees, not deep learning
 
-Gradient-boosted trees remain competitive with or superior to deep learning on most tabular datasets for a few structural reasons worth naming explicitly: tabular features are often heterogeneous and non-smooth (unlike pixels or audio samples, adjacent "feature values" like customer ID or zip code have no meaningful continuity for a neural network to exploit), tabular datasets are frequently small relative to the parameter counts needed for a competitive neural network, and trees handle missing values and mixed feature types with far less preprocessing effort. This is a genuinely important, non-obvious fact about the field: the "deep learning wins everywhere" narrative common outside ML circles is specifically false for tabular data, and this remains true as of 2026.
+Gradient-boosted trees remain competitive with or superior to deep learning on most tabular datasets for a few structural reasons worth naming explicitly: tabular features are often heterogeneous and non-smooth (unlike pixels or audio samples, adjacent "feature values" like customer ID or zip code have no meaningful continuity for a neural network to exploit), tabular datasets are frequently small relative to the parameter counts needed for a competitive neural network, and trees handle missing values and mixed feature types with far less preprocessing effort. This is a genuinely important, non-obvious fact about the field: the "deep learning wins everywhere" narrative common outside ML circles is specifically false for tabular data, and this remains true as of late 2026 for medium and large tables. The one notable crack is at the small-data end, where tabular foundation models such as TabPFN v2 (above) now compete with — and on small datasets have been reported to beat — tuned GBDTs.
 
 ## Relationship to other algorithms
 
 - Decision trees, the base learner here, are covered in [supervised-learning.md](supervised-learning.md).
 - The learning-rate-as-regularizer idea in gradient boosting parallels learning rate schedules in [optimization-algorithms.md](../01-foundations/optimization-algorithms.md), though the mechanics of applying it (scaling a whole new tree's contribution vs. scaling a gradient step) differ.
+- TabPFN's in-context learning is the same mechanism LLMs use when they learn from examples in a prompt; its backbone is the Transformer in [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md).
 - See [algorithm-comparison-master.md](../10-comparison-tables/algorithm-comparison-master.md) for a cross-cutting comparison including these methods alongside deep learning architectures.
 
 ## Sources
@@ -144,3 +167,5 @@ Gradient-boosted trees remain competitive with or superior to deep learning on m
 - Chen, Guestrin, "XGBoost: A Scalable Tree Boosting System" (2016)
 - Ke et al., "LightGBM: A Highly Efficient Gradient Boosting Decision Tree" (2017)
 - Prokhorenkova et al., "CatBoost: Unbiased Boosting with Categorical Features" (2018)
+- Hollmann, Müller, Eggensperger, Hutter, "TabPFN: A Transformer That Solves Small Tabular Classification Problems in a Second" (2022; ICLR 2023)
+- Hollmann et al., "Accurate predictions on small data with a tabular foundation model" (*Nature*, January 2025) [TabPFN v2]

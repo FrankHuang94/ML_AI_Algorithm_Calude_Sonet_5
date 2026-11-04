@@ -42,6 +42,26 @@ Walkthrough: for each token, the router effectively asks "which of my experts ar
 
 **Why it mattered.** Without load balancing, MoE training is empirically unstable and prone to exactly the expert-collapse failure mode described above; load balancing losses are a near-universal component of practical MoE training recipes.
 
+### Auxiliary-loss-free load balancing (bias-based)
+
+**The problem with the auxiliary loss.** A load-balancing loss works, but it has a built-in conflict: its gradient flows into the same router weights as the main loss, so the model is constantly being pushed toward routing choices that are *balanced* rather than *best*. Set its weight too low and experts collapse; set it too high and quality suffers. Tuning that coefficient is a known pain point.
+
+**Origin.** Wang et al. (DeepSeek), "Auxiliary-Loss-Free Load Balancing Strategy for Mixture-of-Experts" (2024); adopted at scale in DeepSeek-V3 (December 2024).
+
+**Core mechanism.** Give each expert i a bias bᵢ that is added to its router score *only when choosing which top-k experts to use* — not when weighting their outputs:
+
+```
+selected  = TopK( scoreᵢ + bᵢ , k )                 (bias affects WHO is picked)
+output    = Σ_{i in selected} gateᵢ(scoreᵢ) · Expert_i(x)   (bias does NOT affect HOW MUCH)
+after each training step, for every expert i:
+    if expert i received more than its fair share of tokens:  bᵢ ← bᵢ − γ
+    if it received less:                                     bᵢ ← bᵢ + γ
+```
+
+Walkthrough: the biases are not learned by gradient descent at all — they are adjusted by a simple feedback rule, with γ a small fixed step. A useful intuition is surge pricing: an overloaded expert gets a small "price increase" (its bias goes down), so marginal tokens that were nearly indifferent between it and another expert drift to the less busy one; an idle expert gets a "discount." Because the bias only affects *selection*, and is never part of the loss, the main training objective is left undistorted — the router is still trained purely to make good predictions, and balance is enforced by a separate controller on the side. DeepSeek reported better quality than with a conventional auxiliary loss at matched balance (DeepSeek-V3 still keeps a very small complementary balance term as a safeguard, according to its technical report).
+
+**Current status.** Influential and widely discussed since DeepSeek-V3 made it part of a frontier-scale recipe; it has not entirely displaced auxiliary losses — DeepSeek-V3 itself pairs the bias controller with a tiny auxiliary term, and conventional auxiliary losses remain common elsewhere.
+
 ## Switch Transformer
 
 **Origin.** Fedus, Zoph, Shazeer (Google), "Switch Transformer: Scaling to Trillion Parameter Models with Simple and Efficient Sparsity" (2021), building on earlier sparsely-gated MoE work for LSTMs (Shazeer et al., 2017).
@@ -68,16 +88,39 @@ Walkthrough: for each token, the router effectively asks "which of my experts ar
 
 ### Fine-grained and shared experts (the 2024+ refinement)
 
-More recent open-weight MoE models (the DeepSeek-MoE line being a widely-cited example) refined the basic design in two ways worth knowing for a current picture. First, **fine-grained experts**: instead of a few large experts, use many *smaller* ones and route to more of them per token (e.g., 8-of-64 rather than 2-of-8). The reasoning is combinatorial — with more, smaller experts, the number of possible expert *combinations* a token can be routed to grows enormously, giving the model finer-grained specialization for the same active parameter count. Second, **shared experts**: designate one or a few experts that *every* token always goes through, in addition to its routed experts. The shared expert absorbs the common, general-purpose computation every token needs (so the routed experts don't each have to redundantly relearn it), letting them specialize more cleanly. This fine-grained-plus-shared pattern has become a common template for high-efficiency MoE designs as of 2026, and is a good example of the incremental architectural refinement the field has continued to do on top of the basic Switch/Mixtral idea.
+More recent open-weight MoE models (the DeepSeek-MoE line being a widely-cited example) refined the basic design in two ways worth knowing for a current picture. First, **fine-grained experts**: instead of a few large experts, use many *smaller* ones and route to more of them per token (e.g., 8-of-64 rather than 2-of-8). The reasoning is combinatorial — with more, smaller experts, the number of possible expert *combinations* a token can be routed to grows enormously, giving the model finer-grained specialization for the same active parameter count. Second, **shared experts**: designate one or a few experts that *every* token always goes through, in addition to its routed experts. The shared expert absorbs the common, general-purpose computation every token needs (so the routed experts don't each have to redundantly relearn it), letting them specialize more cleanly. This fine-grained-plus-shared pattern has become a common template for high-efficiency MoE designs as of late 2026, and is a good example of the incremental architectural refinement the field has continued to do on top of the basic Switch/Mixtral idea.
+
+## The 2025-2026 trend: larger totals, ultra-sparse activation
+
+The most visible MoE trend of 2025-2026 is that the *total* parameter count of open-weight frontier MoE models kept rising while the number of *active* parameters per token stayed roughly flat — so the **active ratio** (active ÷ total) fell to a few percent. Designs at this end of the range are often called **ultra-sparse** MoE.
+
+| Model | Released | Total params | Active params / token | Active ratio (approx.) |
+|---|---|---|---|---|
+| Mixtral 8x7B (for scale) | 2023 | ~47B | ~13B | ~28% |
+| DeepSeek-V3 | Dec 2024 | 671B | 37B | ~5.5% |
+| Kimi K2 (Moonshot) | Jul 2025 | ~1T | 32B | ~3.2% |
+| Qwen3.5-397B-A17B | early 2026 | 397B | 17B | ~4.3% |
+| DeepSeek-V4-Flash (reported) | Apr 2026 | 284B | 13B | ~4.6% |
+| DeepSeek-V4-Pro (reported) | Apr 2026 | 1.6T | 49B | ~3.1% |
+
+Walkthrough: in the "AxxB" naming convention, Qwen3.5-397B-A17B means 397B total, 17B **a**ctive. The ratio column is simple division of the two reported numbers. What the table says, concretely: a token processed by DeepSeek-V4-Pro touches roughly the same amount of weight as a mid-sized dense model, while the model as a whole stores more than thirty times that.
+
+**What made ultra-sparsity workable.** Several of the pieces above and elsewhere in the repository compound: fine-grained plus shared experts (more, smaller experts make very low active ratios still expressive); better load balancing (bias-based balancing keeps hundreds of experts busy without fighting the main loss); training-stability work at trillion-parameter scale (e.g., the MuonClip optimizer used for Kimi K2 — see [optimization-algorithms.md](../01-foundations/optimization-algorithms.md)); and low-precision formats that make the huge memory footprint affordable (FP8 training in DeepSeek-V3; OpenAI's gpt-oss models shipped their MoE weights natively in the 4-bit MXFP4 format — see [quantization.md](../06-inference-optimization/quantization.md)). Ultra-sparse MoE is also frequently paired with hybrid attention (Qwen3-Next and Qwen3.5 combine it with Gated DeltaNet layers — see [state-space-models.md](state-space-models.md)), so that both the feedforward and the sequence-mixing halves of each block are cheap per token. (DeepSeek-V3 also introduced a Multi-Token Prediction training objective whose extra head doubles as a speculative-decoding draft; that is not MoE-specific and is covered in [speculative-decoding.md](../06-inference-optimization/speculative-decoding.md).)
+
+**What it doesn't change.** The memory problem gets *worse*, not better: a 1.6T-parameter model must still be stored somewhere, even if only 49B parameters do work on each token, which pushes deployment toward many-GPU serving, expert parallelism, and aggressive quantization. And the reported numbers come from the developers' own technical reports — the comparisons are about design trend, not a ranking of quality.
+
+### A wrinkle for RL fine-tuning
+
+Reinforcement-learning fine-tuning of MoE models turned out to be less stable than for dense models — one reported reason being that small weight updates can change which experts a token is routed to, which makes GRPO-style per-token importance ratios noisy; Qwen's GSPO (2025) addresses this by computing the importance ratio and clipping at the level of the whole sequence instead (see [rl-for-llms.md](../07-reinforcement-learning/rl-for-llms.md)).
 
 ## Current frontier usage patterns
 
-As of 2026, MoE architectures are used by multiple frontier labs for their largest general-purpose models — the accuracy-per-compute benefits of sparsity become increasingly attractive as target model scale grows, since MoE offers a way to keep growing total capacity without a proportional growth in the (very expensive, at frontier scale) compute needed to serve every token. That said, MoE is not a universal default: dense models remain common for smaller-scale and latency-sensitive deployments, since MoE introduces real additional complexity — the routing/load-balancing machinery, the distributed-systems complexity of sharding experts across devices (see [distributed-training.md](../05-training-methodology/distributed-training.md)), and a memory footprint (all experts must be loadable, even though only a few run per token) that doesn't shrink just because per-token compute does, which matters for serving cost (see [serving-and-batching.md](../06-inference-optimization/serving-and-batching.md)).
+As of late 2026, MoE architectures are used by multiple frontier labs for their largest general-purpose models, and every leading open-weight frontier release discussed above (DeepSeek, Kimi, Qwen, gpt-oss) is an MoE; closed frontier models' architectures are mostly undisclosed, so their share is not publicly known. the accuracy-per-compute benefits of sparsity become increasingly attractive as target model scale grows, since MoE offers a way to keep growing total capacity without a proportional growth in the (very expensive, at frontier scale) compute needed to serve every token. That said, MoE is not a universal default: dense models remain common for smaller-scale and latency-sensitive deployments, since MoE introduces real additional complexity — the routing/load-balancing machinery, the distributed-systems complexity of sharding experts across devices (see [distributed-training.md](../05-training-methodology/distributed-training.md)), and a memory footprint (all experts must be loadable, even though only a few run per token) that doesn't shrink just because per-token compute does, which matters for serving cost (see [serving-and-batching.md](../06-inference-optimization/serving-and-batching.md)).
 
 ## Strengths & limitations
 
-- Strengths: substantially better accuracy-per-compute-FLOP at very large scale; total model "knowledge capacity" can grow largely independent of per-token inference cost; empirically effective at frontier scale across multiple labs' publicly known architectures.
-- Limitations: full model memory footprint stays large (all experts must be resident somewhere, even if unused per-token), which matters for deployment cost even when compute cost is favorable; training is less stable and more complex than dense models (routing collapse, load balancing tuning); distributed serving/training infrastructure is meaningfully more complex than for dense models; routing decisions are somewhat opaque/hard to interpret.
+- Strengths: substantially better accuracy-per-compute-FLOP at very large scale; total model "knowledge capacity" can grow largely independent of per-token inference cost; empirically effective at frontier scale across multiple labs' publicly known architectures, now down to active ratios of a few percent.
+- Limitations: full model memory footprint stays large (all experts must be resident somewhere, even if unused per-token), which matters for deployment cost even when compute cost is favorable — and ultra-sparse designs make this gap wider; training is less stable and more complex than dense models (routing collapse, load balancing tuning), and RL fine-tuning has its own MoE-specific instabilities; distributed serving/training infrastructure is meaningfully more complex than for dense models; routing decisions are somewhat opaque/hard to interpret.
 
 ## Comparison table
 
@@ -87,11 +130,17 @@ As of 2026, MoE architectures are used by multiple frontier labs for their large
 | GShard | 2020 | Automatic expert sharding across devices | Yes — foundational distributed-training technique |
 | Switch Transformer | 2021 | Simplified top-1 routing, trillion-parameter scale | Yes — routing-simplicity lineage still influential |
 | Mixtral | 2023-2024 | Strong open-weight top-2 MoE demonstration | Yes — widely used/referenced open-weight MoE |
+| DeepSeek-MoE / DeepSeek-V3 | 2024 | Fine-grained + shared experts; auxiliary-loss-free (bias-based) balancing | Yes — template for many 2025-26 open-weight MoEs |
+| Kimi K2 | 2025 | ~1T total / 32B active; trained with MuonClip | Yes — trillion-scale ultra-sparse MoE |
+| Qwen3-Next / Qwen3.5 | 2025-2026 | Ultra-sparse MoE combined with Gated DeltaNet hybrid attention | Yes — flagship open-weight line |
+| DeepSeek-V4 (reported) | 2026 | 1.6T / 49B (Pro) and 284B / 13B (Flash) | Yes — newest large-scale datapoint |
 
 ## Relationship to other algorithms
 
 - MoE replaces the dense feedforward sub-layer inside a Transformer block — see [transformer-architecture.md](transformer-architecture.md) for that block's full structure.
 - Expert sharding across devices is a specific application of the model/tensor parallelism techniques covered in [distributed-training.md](../05-training-methodology/distributed-training.md).
+- Bias-based load balancing, MuonClip (see [optimization-algorithms.md](../01-foundations/optimization-algorithms.md)), and GSPO for RL (see [rl-for-llms.md](../07-reinforcement-learning/rl-for-llms.md)) are all, in part, responses to MoE-specific training instability.
+- Ultra-sparse MoE is frequently paired with hybrid linear-attention layers — see [state-space-models.md](state-space-models.md).
 - MoE's memory-footprint-vs-compute tradeoff is directly relevant to [serving-and-batching.md](../06-inference-optimization/serving-and-batching.md) and [quantization.md](../06-inference-optimization/quantization.md), both of which address the cost of deploying very large models.
 
 ## Sources
@@ -100,3 +149,11 @@ As of 2026, MoE architectures are used by multiple frontier labs for their large
 - Lepikhin et al., "GShard: Scaling Giant Models with Conditional Computation and Automatic Sharding" (2020)
 - Fedus, Zoph, Shazeer, "Switch Transformer: Scaling to Trillion Parameter Models with Simple and Efficient Sparsity" (2021)
 - Mistral AI, "Mixtral of Experts" (2024)
+- Dai et al. (DeepSeek), "DeepSeekMoE: Towards Ultimate Expert Specialization in Mixture-of-Experts Language Models" (2024) [fine-grained + shared experts]
+- Wang et al. (DeepSeek), "Auxiliary-Loss-Free Load Balancing Strategy for Mixture-of-Experts" (2024)
+- DeepSeek-AI, "DeepSeek-V3 Technical Report" (December 2024) [671B/37B; bias-based balancing; MTP; FP8]
+- Moonshot AI, Kimi K2 technical report (2025) [~1T/32B; MuonClip]
+- Qwen Team, Qwen3-Next (September 2025) and Qwen3.5 (early 2026) releases [ultra-sparse MoE; Qwen3.5-397B-A17B as reported]
+- OpenAI, gpt-oss model card (August 2025) [MoE weights in MXFP4]
+- DeepSeek-AI, DeepSeek-V4 technical report (April 2026, reported) [V4-Pro 1.6T/49B; V4-Flash 284B/13B]
+- Zheng et al. (Qwen), "Group Sequence Policy Optimization" (2025) [GSPO]

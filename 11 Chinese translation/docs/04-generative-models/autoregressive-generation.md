@@ -1,6 +1,6 @@
 # 逆转的世代
 
-推迟生成是目前生产的基本上每一个大型语言模型背后的培训和样本化范式.该文件涵盖了下一个代码预测框架,在推理时使用的主要解码/样本化策略,为什么这种方法特别占据了文本生成的地位,以及随之而来的退化问题.
+自回归生成(autoregressive generation)是截至2026年末,几乎所有投入生产的大型语言模型背后的训练与采样范式.本文件涵盖下一个词元预测框架、推理时使用的主要解码/采样策略、为什么这种方法在文本生成中尤其占主导地位(以及基于扩散的实验性替代方案)、为什么推理模型使解码速度成为主要成本,以及自回归采样带来的退化问题.
 
 ## 下一个词元预测框架
 
@@ -74,6 +74,14 @@ p(x₁, x₂, ..., x_n) = p(x₁) · p(x₂|x₁) · p(x₃|x₁,x₂) · ... ·
 
 这值得指出,这是其自己的观点,与一般的"为什么只有解码器赢得了"讨论不同.[transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md):文本本质上是序列和分离式的 (句子有一个确定的左到右顺序,每个位置都有有限的代码词汇可选择),这对自行降级框架进行了不寻常的匹配,特别是不像,例如,一个图像,它没有单个"自然"生成顺序,并且是持续的 (像素强度),这是为什么扩散 (见 图像) 的部分[diffusion-models.md](diffusion-models.md)),而不是纯粹的自动降低,成为图像的主导 (尽管自动降低的图像/视频生成,一次预测一个补丁或框架,仍然是一些系统中的活跃,非轻微的替代方法).
 
+**文本领域的非自回归挑战者:扩散语言模型.** 自2025年以来,**扩散语言模型(diffusion language model,dLLM)** 表明,文本也可以用"扩散的方式"生成:先让回答区域全部是 `[MASK]` 占位符,再经过少数几步细化,并行地揭开许多位置,而不是严格地每步一个词元、从左到右生成.例子包括开源的 LLaDA(2025)、Inception Labs 的商用 Mercury 系列,以及 Google 的实验性 Gemini Diffusion.其吸引力在于速度(串行网络调用次数少于词元数)和双向上下文(可以填补中间内容、修改草稿);代价包括失去自回归解码所享有的廉价KV缓存复用,以及每步确定太多词元时的质量损失.截至2026年末,dLLM仍处于实验阶段,前沿LLM仍以仅解码器的自回归模型为主导——其机制与当前证据见 [diffusion-models.md](diffusion-models.md#用于文本的扩散扩散语言模型dllm).
+
+## 推理模型:当解码速度成为主要成本
+
+**发生了什么变化.** **推理模型(reasoning model)** 是一种LLM,它(主要通过基于可验证奖励的强化学习——见 [rl-for-llms.md](../07-reinforcement-learning/rl-for-llms.md))被训练成在给出最终答案之前,先写出一段很长的中间 **思维链(chain of thought)**——逐步推演的过程,通常有数千个词元.OpenAI 的 o1(2024年9月)是第一个被广泛部署的例子,而 DeepSeek-R1(2025年1月)以开放权重的方式证明了这种行为可以被大规模训练出来.这些模型确立了 **测试时计算扩展(test-time compute scaling)**(也称推理时扩展):在困难问题上,允许模型"思考"的词元越多,准确率就会持续提高.
+
+**这对自回归解码意味着什么.** 在自回归生成中,每个输出词元都需要一次串行的前向传播;而在现代硬件上,解码阶段的每次前向传播通常受限于内存带宽(搬运权重和KV缓存),而非算术运算.当一个典型回答只有几百个词元时,这尚可接受;但当推理模型每次回答都会例行地输出数千个隐藏的"思考"词元时,逐词元的解码循环就成了延迟和服务成本中的主要部分.这正是那些能在一次昂贵前向传播中产出多个词元的技术在2025-26年备受关注的主要原因——使用廉价草稿模型或草稿头的 **推测解码(speculative decoding)**(见 [speculative-decoding.md](../06-inference-optimization/speculative-decoding.md))、在预训练中训练的多词元预测头(见 [pretraining-strategies.md](../05-training-methodology/pretraining-strategies.md)),以及更具探索性的扩散语言模型.
+
 ## 复发和退化问题,减轻
 
 **问题是什么?**纯粹最大化可能性的解码策略 (贪的解码,尤其是光束搜索) 经验上往往产生**退化**文本 重复循环 (相同的句子或句子重复字面),通用/混合短语,以及特征着人类写的好文本的各种和特点的普遍缺乏.这不是任何单个组件中的错误;这是"模型分配的序列"和"人类认为最好的序列"是相关的,但不是相同的目标,而贪/光线搜索解码对前者进行了特别优化.
@@ -83,7 +91,7 @@ p(x₁, x₂, ..., x_n) = p(x₁) · p(x₂|x₁) · p(x₃|x₁,x₂) · ... ·
 - **核/顶部p采样,温度**通过在可信的候选人中引入控制的随机性,这些候选人避免了纯粹贪/光线搜索解码的高概率循环.
 - **后培训方法**超越解码时间修复,例如RLHF (见[rlhf-and-alignment.md](../05-training-methodology/rlhf-and-alignment.md)) 直接训练模型,以优先选择人类实际想要的多样性,高质量的产品,而不是仅仅依赖于推理时间采样技巧,而不是基于基模型的退化趋势.
 
-**现状.**实际上,从2026年开始,基本上所有部署的对话性LLM都采用了核/顶部P样本 (或与此密切相关的精炼) 的某种组合,[05-培训方法](../05-training-methodology/)解码策略和培训方法一起工作,而不是相互替代.
+**现状.**实际上,截至2026年末,基本上所有部署的对话性LLM都采用了核/顶部P样本 (或与此密切相关的精炼) 的某种组合,[05-培训方法](../05-training-methodology/)解码策略和培训方法一起工作,而不是相互替代.
 
 ## 较量表
 
@@ -98,9 +106,14 @@ p(x₁, x₂, ..., x_n) = p(x₁) · p(x₂|x₁) · p(x₃|x₁,x₂) · ... ·
 
 - 仅使用解码器的Transformer实现的培训目标是下一个代码预测[transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md)其他[pretraining-strategies.md](../05-training-methodology/pretraining-strategies.md).
 - 交叉缩损失和困惑,[loss-functions.md](../01-foundations/loss-functions.md)根据本文件的推理时间采样讨论,直接的培训时间和评估时间是相对的.
-- 投机解码 (见 [speculative-decoding.md](../06-inference-optimization/speculative-decoding.md)) 是一种加速自动降低发电的技术,而不会改变其输出分布.
+- 推测解码(见 [speculative-decoding.md](../06-inference-optimization/speculative-decoding.md))是一种在不改变输出分布的前提下加速自回归生成的技术——是本文所述生成过程的直接延伸,对推理模型的长输出尤其有价值.
+- 扩散语言模型(见 [diffusion-models.md](diffusion-models.md))是文本生成领域主要的实验性非自回归替代方案.
+- 推理模型以及产生它们的强化学习见 [rl-for-llms.md](../07-reinforcement-learning/rl-for-llms.md).
 - 利率 (见[rlhf-and-alignment.md](../05-training-methodology/rlhf-and-alignment.md)) 是解决退化问题的主要后培训杆,而不是解码策略水平.
 
 ## 来源
 
 - 霍尔茨曼,布伊斯,杜,福布斯,乔伊,"神经文本退化奇怪案例" (2019) [核/顶部P样本采集]
+- OpenAI, "Learning to Reason with LLMs" (2024) [o1,首个被广泛部署的推理模型;测试时计算扩展]
+- DeepSeek-AI, "DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning" (2025)
+- Nie 等人, "Large Language Diffusion Models" (2025) [LLaDA——更多dLLM来源见 diffusion-models.md]

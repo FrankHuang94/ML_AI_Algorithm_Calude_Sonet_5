@@ -1,6 +1,6 @@
 # Autoregressive Generation
 
-Autoregressive generation is the training and sampling paradigm behind essentially every large language model in production today. This file covers the next-token-prediction framing, the major decoding/sampling strategies used at inference time, why this approach specifically dominates text generation, and the degeneration problems that come with it.
+Autoregressive generation is the training and sampling paradigm behind essentially every large language model in production as of late 2026. This file covers the next-token-prediction framing, the major decoding/sampling strategies used at inference time, why this approach specifically dominates text generation (and the experimental diffusion-based alternative), why reasoning models have made decoding speed a dominant cost, and the degeneration problems that come with autoregressive sampling.
 
 ## Next-token prediction framing
 
@@ -74,6 +74,14 @@ Read the whole family off this picture: greedy takes the single tallest bar; top
 
 This is worth stating as its own point, distinct from the general "why decoder-only won" discussion in [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md): text is inherently sequential and discrete (a sentence has a definite left-to-right order, and there's a finite vocabulary of tokens to choose from at each position), which is an unusually good match for the autoregressive framing specifically — unlike, say, an image, which has no single "natural" generation order and is continuous-valued (pixel intensities), which is part of why diffusion (see [diffusion-models.md](diffusion-models.md)), not pure autoregression, became dominant for images (though autoregressive image/video generation, predicting one patch or frame at a time, remains an active, non-trivial alternative approach in some systems).
 
+**The non-autoregressive challenger for text: diffusion language models.** Since 2025, **diffusion language models (dLLMs)** have shown that text can also be generated the "diffusion way": start with an answer region that is entirely `[MASK]` placeholders and unmask many positions in parallel over a few refinement steps, instead of strictly one token per step, left to right. Examples include the open LLaDA (2025), Inception Labs' commercial Mercury models, and Google's experimental Gemini Diffusion. The appeal is speed (fewer sequential network calls than tokens) and bidirectional context (infilling, revising); the costs include losing the cheap KV-cache reuse that autoregressive decoding enjoys and quality loss when too many tokens are committed per step. As of late 2026 dLLMs are experimental, and autoregressive decoder-only models remain dominant for frontier LLMs — see [diffusion-models.md](diffusion-models.md#diffusion-for-text-diffusion-language-models-dllms) for the mechanism and current evidence.
+
+## Reasoning models: when decoding speed becomes the dominant cost
+
+**What changed.** A **reasoning model** is an LLM trained (largely with reinforcement learning on verifiable rewards — see [rl-for-llms.md](../07-reinforcement-learning/rl-for-llms.md)) to write out a long intermediate **chain of thought** — step-by-step working, often thousands of tokens — before giving its final answer. OpenAI's o1 (September 2024) was the first widely deployed example, and DeepSeek-R1 (January 2025) showed with open weights that such behavior can be trained at scale. These models established **test-time compute scaling** (also called inference-time scaling): accuracy on hard problems keeps improving as the model is allowed to "think" for more tokens.
+
+**Why this matters for autoregressive decoding.** In autoregressive generation, every output token costs one sequential forward pass, and on modern hardware each such pass during decoding is typically limited by memory bandwidth (moving the weights and KV cache) rather than arithmetic. When a typical answer was a few hundred tokens, that was tolerable; when a reasoning model routinely emits thousands of hidden "thinking" tokens per answer, the token-by-token decode loop becomes the dominant share of latency and serving cost. This is the main reason techniques that produce several tokens per expensive forward pass — **speculative decoding** with a cheap draft model or draft head (see [speculative-decoding.md](../06-inference-optimization/speculative-decoding.md)), multi-token-prediction heads trained during pretraining (see [pretraining-strategies.md](../05-training-methodology/pretraining-strategies.md)), and, more speculatively, diffusion language models — received so much attention in 2025-26.
+
 ## Repetition and degeneration problems, and mitigations
 
 **The problem.** Purely likelihood-maximizing decoding strategies (greedy decoding, and beam search especially) empirically tend to produce **degenerate** text — repetitive loops (the same phrase or sentence repeated verbatim), generic/bland phrasing, and a general lack of the variety and specificity that characterizes good human-written text. This isn't a bug in any single component; it's a structural consequence of the fact that "the sequence the model assigns highest probability to" and "the sequence a human would judge as best" are related but not identical targets, and greedy/beam-search decoding specifically optimizes for the former.
@@ -83,7 +91,7 @@ This is worth stating as its own point, distinct from the general "why decoder-o
 - **Nucleus/top-p sampling with temperature** (above) — by introducing controlled randomness among plausible candidates, these avoid the degenerate high-probability loops that purely greedy/beam-search decoding is prone to.
 - **Post-training methods** — going beyond decoding-time fixes, techniques like RLHF (see [rlhf-and-alignment.md](../05-training-methodology/rlhf-and-alignment.md)) directly train the model to prefer the kind of varied, high-quality output humans actually want, rather than only relying on inference-time sampling tricks to paper over a base model's degeneration tendencies.
 
-**Current status.** In practice, essentially all deployed conversational LLMs as of 2026 use some combination of nucleus/top-p sampling (or closely related refinements), a moderate temperature setting, and a model that has already been substantially shaped by post-training (see [05-training-methodology](../05-training-methodology/)) to prefer varied, non-degenerate output — the decoding strategy and the training methodology work together, not as alternatives to each other.
+**Current status.** In practice, essentially all deployed conversational LLMs as of late 2026 use some combination of nucleus/top-p sampling (or closely related refinements), a moderate temperature setting, and a model that has already been substantially shaped by post-training (see [05-training-methodology](../05-training-methodology/)) to prefer varied, non-degenerate output — the decoding strategy and the training methodology work together, not as alternatives to each other.
 
 ## Comparison table
 
@@ -98,9 +106,14 @@ This is worth stating as its own point, distinct from the general "why decoder-o
 
 - Next-token prediction is the training objective implemented by decoder-only Transformers — see [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md) and [pretraining-strategies.md](../05-training-methodology/pretraining-strategies.md).
 - Cross-entropy loss and perplexity, covered in [loss-functions.md](../01-foundations/loss-functions.md), are the direct training-time and evaluation-time counterparts of this file's inference-time sampling discussion.
-- Speculative decoding (see [speculative-decoding.md](../06-inference-optimization/speculative-decoding.md)) is a technique for speeding up autoregressive generation without changing its output distribution — a direct extension of the generation process described here.
+- Speculative decoding (see [speculative-decoding.md](../06-inference-optimization/speculative-decoding.md)) is a technique for speeding up autoregressive generation without changing its output distribution — a direct extension of the generation process described here, and especially valuable for long reasoning-model outputs.
+- Diffusion language models (see [diffusion-models.md](diffusion-models.md)) are the main experimental non-autoregressive alternative for text generation.
+- Reasoning models and the RL that produces them are covered in [rl-for-llms.md](../07-reinforcement-learning/rl-for-llms.md).
 - RLHF (see [rlhf-and-alignment.md](../05-training-methodology/rlhf-and-alignment.md)) is the main post-training lever for addressing degeneration at the model level rather than the decoding-strategy level.
 
 ## Sources
 
 - Holtzman, Buys, Du, Forbes, Choi, "The Curious Case of Neural Text Degeneration" (2019) [nucleus/top-p sampling]
+- OpenAI, "Learning to Reason with LLMs" (2024) [o1, first widely deployed reasoning model; test-time compute scaling]
+- DeepSeek-AI, "DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning" (2025)
+- Nie et al., "Large Language Diffusion Models" (2025) [LLaDA — see diffusion-models.md for further dLLM sources]

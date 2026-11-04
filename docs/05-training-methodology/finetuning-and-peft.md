@@ -54,7 +54,7 @@ Walkthrough: instead of learning a full d×d update matrix (which would have d²
 
 ### The broader LoRA family (DoRA and other refinements)
 
-LoRA has spawned a family of refinements worth being aware of, though the core idea is unchanged. **DoRA** (Weight-Decomposed Low-Rank Adaptation, 2024) splits each weight into a magnitude and a direction and applies a LoRA-style low-rank update only to the direction, which has been reported to close some of the residual accuracy gap between LoRA and full fine-tuning at similar parameter cost. Other variants adjust *where* rank is spent (allocating more rank to layers that need it) or *how* the low-rank matrices are initialized. The practical takeaway for a reader: LoRA is not a single frozen technique but an actively refined family, and "use LoRA" in 2026 often means "use LoRA or one of its close descendants," with the plain original still a perfectly strong default.
+LoRA has spawned a family of refinements worth being aware of, though the core idea is unchanged. **DoRA** (Weight-Decomposed Low-Rank Adaptation, 2024) splits each weight into a magnitude and a direction and applies a LoRA-style low-rank update only to the direction, which has been reported to close some of the residual accuracy gap between LoRA and full fine-tuning at similar parameter cost. Other variants adjust *where* rank is spent (allocating more rank to layers that need it) or *how* the low-rank matrices are initialized. The practical takeaway for a reader: LoRA is not a single frozen technique but an actively refined family, and "use LoRA" in late 2026 often means "use LoRA or one of its close descendants," with the plain original still a perfectly strong default.
 
 ## Adapters
 
@@ -85,7 +85,7 @@ LoRA has spawned a family of refinements worth being aware of, though the core i
 
 ## Current status
 
-LoRA (and QLoRA where fine-tuning memory is especially constrained) is the standard default parameter-efficient fine-tuning approach as of 2026, given its combination of strong empirical performance, zero added inference latency when merged, and the practical convenience of maintaining many lightweight task-specific adapters against one shared frozen base model. Full fine-tuning remains used when maximum task performance justifies its cost, or for the pretraining-adjacent large-scale post-training stages some labs run on their own base models before any PEFT-based customization layer is applied downstream.
+LoRA (and QLoRA where fine-tuning memory is especially constrained) is the standard default parameter-efficient fine-tuning approach as of late 2026, given its combination of strong empirical performance, zero added inference latency when merged, and the practical convenience of maintaining many lightweight task-specific adapters against one shared frozen base model. Full fine-tuning remains used when maximum task performance justifies its cost, or for the pretraining-adjacent large-scale post-training stages some labs run on their own base models before any PEFT-based customization layer is applied downstream.
 
 ## Relationship to other algorithms
 

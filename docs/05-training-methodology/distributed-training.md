@@ -69,11 +69,23 @@ Walkthrough: each stage trades a bit more communication overhead (to reconstruct
 
 **Name & definition.** FSDP is (in PyTorch's ecosystem specifically) the widely-used implementation of the ZeRO Stage 3 idea — full parameter, gradient, and optimizer-state sharding — integrated as a relatively easy-to-use training wrapper rather than a from-scratch custom implementation.
 
-**Why it mattered.** FSDP made ZeRO-Stage-3-style full sharding broadly accessible to the wider research and engineering community (rather than requiring bespoke, in-house distributed training infrastructure), and is, alongside similar tools in other frameworks, one of the most commonly used tools for large-scale model training as of 2026.
+**Why it mattered.** FSDP made ZeRO-Stage-3-style full sharding broadly accessible to the wider research and engineering community (rather than requiring bespoke, in-house distributed training infrastructure), and is, alongside similar tools in other frameworks, one of the most commonly used tools for large-scale model training as of late 2026.
 
 ## Communication bottlenecks and hardware/interconnect design
 
 **Why this matters beyond software.** Every parallelism strategy above has a communication cost — all-reduce for data parallelism's gradient averaging, activation exchange for tensor parallelism, and activation hand-offs for pipeline parallelism — and as models and clusters have grown, this communication has become a first-order bottleneck, not an afterthought. This is the direct reason hardware and datacenter design for AI training has become its own significant engineering discipline: extremely high-bandwidth, low-latency interconnects between accelerators within a single server (needed for tensor parallelism's frequent, latency-sensitive communication), and high-bandwidth networking between servers within a cluster (needed for data-parallel gradient averaging and pipeline-parallel hand-offs across nodes) directly determine how efficiently a given amount of raw accelerator compute can actually be turned into training progress. A cluster with excellent individual accelerators but a poor interconnect can spend more time waiting on communication than doing useful computation — which is why frontier AI labs' infrastructure investment is as much about networking and interconnect topology as it is about the accelerators themselves.
+
+## Expert parallelism (for Mixture-of-Experts models)
+
+**Name & definition.** **Expert parallelism** places the different experts of a Mixture-of-Experts (MoE) layer (see [mixture-of-experts.md](../03-deep-learning-architectures/mixture-of-experts.md)) on different devices, so each device stores and runs only some of the experts, and routes every token to whichever devices hold the experts the router chose for it.
+
+**Core mechanism.** In each MoE layer, every device first runs the router for its own tokens, then sends each token to the device(s) holding its chosen experts, and afterwards receives the results back. This "everyone sends some tokens to everyone" step is an **all-to-all** communication (each device exchanges a different chunk of data with every other device — unlike all-reduce, where everyone ends up with the same combined value), and it happens twice per MoE layer (dispatch and return). Two consequences follow: all-to-all traffic across the cluster becomes a major cost, and **load balancing** stops being only a modeling concern — if the router sends too many tokens to one expert, the device hosting it becomes the straggler that everyone else waits for.
+
+**Why it matters now.** The largest open models of 2025-26 are sparse MoE models with roughly a trillion or more *total* parameters but only tens of billions *active* per token — e.g., Kimi K2 (2025, ~1T total / 32B active) and DeepSeek-V4-Pro (2026, reported 1.6T total / 49B active). No single device or node can hold all of those experts, so such models are trained with expert parallelism combined with the data, pipeline, and (sometimes) tensor parallelism described above. Hybrid architectures that mix linear-attention and full-attention layers (see [state-space-models.md](../03-deep-learning-architectures/state-space-models.md)) can also use MoE feed-forward layers — Qwen3-Next (2025), for example, pairs its hybrid attention layout with an ultra-sparse MoE — and then need the same expert-parallel machinery.
+
+## Low-precision compute and communication (FP8, FP4)
+
+Lower-precision number formats cut both sides of the cost equation in this file: an 8-bit or 4-bit number is a half or a quarter the size of a 16-bit one, so matrix multiplications run faster on hardware with dedicated low-precision units, *and* any tensor sent between devices is smaller, shrinking communication volume. DeepSeek-V3 (2024) demonstrated FP8 mixed-precision training at frontier scale, and NVIDIA's 2025 NVFP4 study reported 4-bit pretraining of a 12B model that essentially matched an FP8 baseline (details and caveats in [pretraining-strategies.md](pretraining-strategies.md); the number formats themselves in [quantization.md](../06-inference-optimization/quantization.md)). The engineering tradeoff is that every place a tensor is rounded to fewer bits — including before it is communicated — is a place where numerical error can creep in, so which tensors are allowed into low precision (and which stay in 16- or 32-bit) is a careful, per-system design decision rather than a global switch.
 
 ## Comparison table
 
@@ -83,11 +95,13 @@ Walkthrough: each stage trades a bit more communication overhead (to reconstruct
 | Tensor parallelism | Individual weight matrices/layers | Frequent, latency-sensitive activation exchange | Within a single tightly-interconnected node |
 | Pipeline parallelism | Groups of layers (model depth) | Less frequent, activation hand-offs between stages | Across nodes in a cluster |
 | ZeRO / FSDP | Optimizer state (Stage 1), + gradients (2), + parameters (3) | Gather/release shards as needed, layered on data-parallel communication | Any scale; commonly combined with tensor/pipeline parallelism at the largest scales |
+| Expert parallelism | The experts of each MoE layer | All-to-all token dispatch and return, twice per MoE layer | Large sparse MoE models (essential at ~1T+ total parameters) |
 
 ## Relationship to other algorithms
 
 - Optimizer state, the primary target of ZeRO sharding, is explained in its original context in [optimization-algorithms.md](../01-foundations/optimization-algorithms.md).
-- Mixture-of-Experts models add another dimension of distributed complexity — expert sharding across devices — building directly on the parallelism concepts in this file; see [mixture-of-experts.md](../03-deep-learning-architectures/mixture-of-experts.md) and its discussion of GShard.
+- Mixture-of-Experts models add another dimension of distributed complexity — expert parallelism (above) — building directly on the parallelism concepts in this file; see [mixture-of-experts.md](../03-deep-learning-architectures/mixture-of-experts.md) and its discussion of GShard and load balancing.
+- Low-precision training formats are covered in [pretraining-strategies.md](pretraining-strategies.md) and [quantization.md](../06-inference-optimization/quantization.md).
 - Distributed training infrastructure choices interact with the data/curriculum strategies in [curriculum-and-data-strategies.md](curriculum-and-data-strategies.md) (e.g., how data is sharded and streamed to data-parallel workers).
 
 ## Sources
@@ -96,3 +110,7 @@ Walkthrough: each stage trades a bit more communication overhead (to reconstruct
 - Shoeybi et al. (NVIDIA), "Megatron-LM: Training Multi-Billion Parameter Language Models Using Model Parallelism" (2019) [tensor parallelism]
 - Huang et al., "GPipe: Efficient Training of Giant Neural Networks using Pipeline Parallelism" (2019)
 - Narayanan et al., "Efficient Large-Scale Language Model Training on GPU Clusters Using Megatron-LM" (2021) [3D parallelism]
+- Lepikhin et al., "GShard: Scaling Giant Models with Conditional Computation and Automatic Sharding" (2020) [expert parallelism for MoE]
+- DeepSeek-AI, "DeepSeek-V3 Technical Report" (2024) [FP8 mixed-precision training at scale]
+- NVIDIA, "Pretraining LLMs with NVFP4" (arXiv 2509.25149, 2025; v2 March 2026)
+- Moonshot AI, Kimi K2 technical report (2025) [~1T-total / 32B-active MoE]; DeepSeek-AI, DeepSeek-V4 technical report (April 2026, reported) [1.6T-total / 49B-active MoE]

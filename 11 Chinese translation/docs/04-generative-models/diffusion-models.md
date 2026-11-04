@@ -1,6 +1,6 @@
 # 扩散模型
 
-扩散模型是截至2026年对图像,视频和音频生成的主导方法.本文件涵盖了方法核心的前进/反转过程,使其成为实用的DDPM公式,与基于分数的生成模型的连接,驱动大多数部署的系统的隐藏扩散架构以及用于引导生成的分类器指导技术.
+截至2026年末,扩散模型是图像、视频和音频生成的主导方法.本文件涵盖该方法核心的前向/反向过程、使其真正实用的DDPM公式、它与基于分数的生成模型(score-based generative modeling)的联系、驱动大多数已部署系统的潜在扩散(latent diffusion)架构、用于引导生成的分类器指导技术,以及一个较新且仍处于实验阶段的方向——将扩散用于文本本身(扩散语言模型).
 
 ## 往前 (噪音) 和往后 (声) 的过程
 
@@ -74,7 +74,7 @@ guided_prediction = uncond_pred + w · (cond_pred − uncond_pred)
 
 在哪里 w > 1 是指导尺度 (如何强烈向条件推进). 通过:条件和无条件预测之间的差异代表"条件具体增加什么";放大这一差异 (而不是直接使用条件预测) 推动生成更强烈地反映提示/条件,比一个简单的条件预测单独会,以某种成本对总体样本的多样性,如果指导尺度被推高太高.
 
-**为什么无分类指导赢得了.**它不需要单独的分类器模型,使用任何条件信号 (文字,类标签,图像) 主要的扩散模型都被训练,而不是仅限于特定分类器的输出,并且经验上产生了更好的结果.
+**为什么无分类器指导胜出.**它不需要单独的分类器模型,可以使用主扩散模型训练时所用的任何条件信号(文本、类别标签、图像),而不局限于某个特定分类器的输出,并且在经验上产生了更好的结果——这就是为什么截至2026年末,基本上所有已部署的文本到图像扩散系统都使用无分类器指导而不是分类器指导.
 
 ## 调整流量和调整流量 (当前一代培训目标)
 
@@ -88,9 +88,55 @@ guided_prediction = uncond_pred + w · (cond_pred − uncond_pred)
 
 连接从此文件和从[gans.md](gans.md)基本的方法是:稳定,简单,相邻的概率训练 (没有敌对游戏可破坏稳定);强大的实验性样本多样性 (模式崩类型的故障,是GAN的本地,并不是扩散训练的可比较问题);对文字/类型/其他信号的控制性强度进行条件生成的自然,充分理解的机制 (无分类指导),以及通过隐形扩散,特别是通过高分辨率产生以计算合理的成本的实际途径.相同的核心噪音/测量框架已远远超越了静态图像,并将噪音过程扩展到视频 (跨越时间维度以及空间维度) 和生成,这也是为什么在多种方式上成为默认的音频扩散生成方法的一部分.
 
-## 目前的边境状况
+## 用于文本的扩散:扩散语言模型(dLLM)
 
-扩散模型仍然是截至2026年图像,视频和音频生成的主导方法.与一些替代方案 (特别是GAN,在较小程度上一些新的几步/蒸式扩散变体) 相比的主要实际缺点是推理速度.
+**名称与定义.** **扩散语言模型(diffusion language model,dLLM)** 生成文本的方式是:从一段"空白"位置出发,通过少量并行的细化步骤把它们逐步填满,而不是像自回归LLM那样从左到右一次写一个词元(token)(见 [autoregressive-generation.md](autoregressive-generation.md)).
+
+**为什么文本需要另一种"噪声".** 高斯噪声适用于图像,是因为像素是连续数值——"同一个像素,略加扰动"是有意义的.而文本由来自固定词表的离散词元组成;"第4071号词元加上0.3"没有任何合理含义.在语言上效果最好的做法是 **掩码(吸收态)离散扩散(masked / absorbing-state discrete diffusion)**:前向"加噪"过程不是添加高斯噪声,而是把词元替换成一个特殊的 `[MASK]` 符号."吸收态(absorbing state)"指的是:某个位置一旦变成 `[MASK]`,在前向过程的剩余部分中就一直保持掩码——掩码是过程会落入且永不离开的状态.把这个过程推到底,每个位置都会变成 `[MASK]`:这个完全被掩码的序列,就相当于文本版的"纯噪声".
+
+**起源.** 离散状态扩散由 Austin 等人("D3PM",2021)形式化,其中已包含吸收/掩码变体;2024年的工作,如 MDLM(Sahoo 等人)和 SEDD(Lou 等人),为语言任务简化并强化了这一方法.2025年的进展在于规模:**LLaDA**(Nie 等人,2025)从零开始训练了一个开源的80亿参数(8B)掩码扩散语言模型——相当于一个常规中等规模开源LLM的大小.
+
+**核心机制——训练.** 取一段真实文本 x₀,在0到1之间随机选取掩码比例 t,并以概率 t 独立地掩盖每个词元,得到 xₜ.一个能同时看到整个序列的Transformer(双向注意力——没有因果掩码)被训练去预测每个被掩盖位置上的原始词元:
+
+```
+Loss ≈ 𝔼_{x₀, t, xₜ} [ Σ_{i : xₜⁱ = [MASK]}  −log p_θ( x₀ⁱ | xₜ ) ]      (plus a weighting that depends on t, omitted here)
+```
+
+逐步解读:这就是普通的交叉熵(见 [loss-functions.md](../01-foundations/loss-functions.md)),只在被掩盖的位置上计算——"给定可见的词元,每个掩码下面原本藏着什么?"如果这听起来像BERT的掩码语言建模(见 [pretraining-strategies.md](../05-training-methodology/pretraining-strategies.md)),那是因为两者确实是近亲.关键区别在于:BERT总是掩盖一个固定的小比例(约15%),而dLLM要在 *所有* 掩码比例上训练——从"几乎什么都没遮"到"全部遮住".学会从完全掩码的状态中恢复文本,正是把一个"完形填空"模型变成生成器的关键.
+
+**核心机制——生成.** 在提示词(prompt)后面放一段完全由 `[MASK]` 组成的回答区域.每一步,模型同时预测 *所有* 被掩码的位置;采样器只确定(commit)其中置信度最高的预测,其余位置保留(或重新放回)为 `[MASK]`,然后重复.一个玩具示例:
+
+```
+ prompt (fixed):  "Q: What is the capital of France?  A:"
+ answer region:   5 slots, filled in 3 steps instead of 5
+
+ step 0:   [M]     [M]       [M]   [M]     [M]    ← start fully masked
+ step 1:   The     [M]       [M]   Paris   [M]    ← predict every slot at once,
+                                                     commit only the most confident
+ step 2:   The     [M]       is    Paris   .
+ step 3:   The     capital   is    Paris   .      ← done: 5 tokens, 3 network calls
+
+ autoregressive, for contrast: 5 tokens = 5 sequential network calls, strictly left → right
+```
+
+**为什么人们对它感兴趣.** (1)**并行解码:** 如果每一步可以确定多个词元,那么一个N个词元的序列所需的串行网络调用次数就远少于N——这与推测解码(speculative decoding)从另一个角度攻击的是同一个"每次前向传播只产出一个词元"的瓶颈(见 [speculative-decoding.md](../06-inference-optimization/speculative-decoding.md)).(2)**双向上下文:** 每个位置都能看到其他所有位置,因此模型可以填补文本中间的空缺(infilling)或修改草稿,而不只是向后追加.(3)**灵活的生成顺序:** 原则上,没有任何东西强制要求从左到右生成.
+
+**代价与陷阱.** 每一步都是对整个序列的一次前向传播;而且由于注意力是双向的,当后面的某个词元被揭开时,一个已经确定的词元的表示也可能随之改变——因此,让自回归解码变得廉价的标准KV缓存技巧(见 [kv-cache-and-attention-optimization.md](../06-inference-optimization/kv-cache-and-attention-optimization.md))无法直接套用.每一步确定太多词元会损害质量:同一步中被揭开的词元是在彼此看不到对方最终取值的情况下预测的,因此它们可能各自合理、彼此却不一致(一个位置选了"New",另一个位置选了"Angeles").所以,速度与质量之间的权衡由采样器每一步确定多少个词元来控制.
+
+**代表性系统(带日期的示例).**
+- **LLaDA**(2025)——开源的8B掩码扩散语言模型(见上文);学术界dLLM研究的常用参照点.
+- **Mercury**(Inception Labs,2025)——一个以生成速度为卖点的商用dLLM系列.**Mercury 2**(2026年2月,据报道)被厂商宣传为首个具备推理能力的dLLM,速度约为每秒1,000个词元;这两项说法均为厂商声明,本文未作独立核实.
+- **Gemini Diffusion**(Google DeepMind,2025年5月发布)——一个实验性的dLLM;据报道,截至2026年年中它仍处于实验/候补名单(waitlist)阶段.
+
+**研究信号:ICML 2026.** ICML 2026(2026年7月,首尔)的杰出论文奖(Outstanding Paper)中有两篇与扩散相关:
+- *"The Flexibility Trap: Rethinking the Value of Arbitrary Order in Diffusion Language Models"*(《灵活性陷阱:重新思考扩散语言模型中任意生成顺序的价值》)认为,以任意顺序生成词元的能力——常被视为dLLM的核心优势——并不像人们设想的那样有价值.结合上文的"代价与陷阱"来看,它把支持dLLM的理由重新拉回到速度,而非顺序上的灵活性.
+- *"High-Accuracy Sampling for Diffusion Models and Log-Concave Distributions"*(《扩散模型与对数凹分布的高精度采样》)是一篇理论论文,研究如何从扩散模型以及 **对数凹分布(log-concave distribution)**(对数密度为凹函数的分布——单峰、没有彼此竞争的多个峰)中精确地采样.它关注的是一般意义上的扩散采样,而非专门针对文本.
+
+**当前状态.** 实验性/新兴.dLLM是一条可信且研究活跃的、通往更快文本生成的路线,已有至少一个商用系列和一个前沿实验室的实验性模型.但截至2026年末,仅解码器(decoder-only)的自回归Transformer在前沿LLM中仍占压倒性主导;目前尚未证实dLLM在前沿规模上能达到自回归模型的质量,也未证实其速度优势在面对充分优化的自回归推理服务(推测解码、批处理、量化)时依然成立.
+
+## 当前前沿状况
+
+扩散模型仍然是截至2026年末图像、视频和音频生成的主导方法.与一些替代方案(特别是GAN,在较小程度上还有一些新的少步/蒸馏扩散变体)相比,其主要实际缺点是推理速度.
 
 几种技术家庭攻击速度问题,
 - **较好的样本**(例如,**鱼**培训模型的重新解释,使这一代人能够接受*较少,较大*往往减少数百步到数十步,使样本采集过程变得决定性 (相同的噪音输入总是产生相同的图像,可复制和编辑有用),而无需重新训练模型.
@@ -99,9 +145,11 @@ guided_prediction = uncond_pred + w · (cond_pred − uncond_pred)
 
 在这三个方面,该领域取得了实质性,报告的进展,到达了几步生成越来越实用的程度;然而,在本文写作时,最重要的质量时,多步传播仍然是默认的.
 
+对于文本而言,扩散语言模型(见上文)仍是自回归生成的一种实验性替代方案,(尚)不能取代它.
+
 ## 比较表
 
-|系统|年份|关键创新|仍有意义 (2026)?|
+|系统|年份|关键创新|仍有意义 (2026年末)?|
 |---|---|---|---|
 |部部| 2020 |噪音预测培训目标,稳定和简单|是的 基本的配方,仍然直接使用|
 |基于分数的生成模型| 2019-2021 |理论上与DDPM相结合.|是的 理论骨干,可与DDPM框相交换使用|
@@ -109,6 +157,8 @@ guided_prediction = uncond_pred + w · (cond_pred − uncond_pred)
 |流量匹配/直流| 2022-2023 |速度场训练;直线,步骤较少的路径 |是的, 越来越多的新大型图像/视频模型的目标|
 |隐形扩散 (稳定扩散) | 2021/2022 |在压缩的VAE隐藏空间中分散,而不是原始的像素|是的 主导的实践架构|
 |无类型指导| 2022 |扩大条件对无条件预测差异|是的 标准的调节技术|
+|掩码(吸收态)离散扩散——D3PM、MDLM | 2021-2024 |通过逐步掩码在离散词元上进行扩散|是——当前dLLM的基础|
+|扩散语言模型(LLaDA、Mercury、Gemini Diffusion) | 2025-2026 |通过在少数几步内并行揭开掩码来生成文本|实验性——在速度上有前景;前沿LLM仍以自回归为主导|
 
 ## 与其他算法的关系
 
@@ -116,6 +166,8 @@ guided_prediction = uncond_pred + w · (cond_pred − uncond_pred)
 - 射的稳定优势最好理解在与GAN训练不稳定直接的对比下[gans.md](gans.md).
 - 通过跨重视,文字调节直接与重视机制联系起来.[transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md).
 - 噪音预测回归目标是应用MSE损失[loss-functions.md](../01-foundations/loss-functions.md).
+- 扩散语言模型是文本领域主要的非自回归替代方案——与 [autoregressive-generation.md](autoregressive-generation.md) 对照;其训练目标是 [pretraining-strategies.md](../05-training-methodology/pretraining-strategies.md) 中BERT式掩码语言建模的推广;其并行解码的卖点与 [speculative-decoding.md](../06-inference-optimization/speculative-decoding.md) 形成竞争.
+- 流匹配(flow matching)与 [flow-based-models.md](flow-based-models.md) 中的连续流视角相联系.
 
 ## 来源
 
@@ -129,3 +181,9 @@ guided_prediction = uncond_pred + w · (cond_pred − uncond_pred)
 - 曲及其他,"一致性模型" (2023)
 - 达里瓦尔,尼科尔, "分散模型在图像合成上击败了GAN" (2021) [类别指导]
 - 霍,萨利曼斯,"无分类器传播指南" (2022)
+- Austin, Johnson, Ho, Tarlow, van den Berg, "Structured Denoising Diffusion Models in Discrete State-Spaces" (2021) [D3PM,含吸收/掩码扩散]
+- Sahoo 等人, "Simple and Effective Masked Diffusion Language Models" (2024) [MDLM];Lou, Meng, Ermon, "Discrete Diffusion Modeling by Estimating the Ratios of the Data Distribution" (2024) [SEDD]
+- Nie 等人, "Large Language Diffusion Models" (2025) [LLaDA,开源8B dLLM]
+- Inception Labs, Mercury(2025)与 Mercury 2(2026年2月)发布公告——速度及"首个推理dLLM"等数据为厂商声明(据报道)
+- Google DeepMind, Gemini Diffusion(实验性,2025年5月发布;据报道截至2026年年中仍需候补)
+- ICML 2026 杰出论文:"The Flexibility Trap: Rethinking the Value of Arbitrary Order in Diffusion Language Models";"High-Accuracy Sampling for Diffusion Models and Log-Concave Distributions"(2026)

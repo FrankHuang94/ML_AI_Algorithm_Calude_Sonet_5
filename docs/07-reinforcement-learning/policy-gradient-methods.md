@@ -30,7 +30,7 @@ Walkthrough: J(θ) is the expected total reward under the current policy — the
 
 **Core contribution.** A3C runs many actor-critic agents in parallel, each interacting with its own independent copy of the environment and asynchronously sending gradient updates to a shared set of parameters, rather than running one single agent sequentially. This serves a role somewhat analogous to experience replay's decorrelation benefit in DQN (see [value-based-methods.md](value-based-methods.md)) — many parallel agents naturally generate more diverse, less temporally-correlated experience than a single agent would, which stabilizes training — while also providing a straightforward way to use more compute (many parallel workers) to speed up training.
 
-**Current status.** A3C's core ideas (parallel actor-critic training, advantage-based updates) remain influential, though it has been largely superseded in practice by PPO (below) for most modern applications, including RLHF.
+**Current status.** A3C's core ideas (parallel actor-critic training, advantage-based updates) remain influential, though it has been largely superseded in practice by PPO (below) for most modern applications, including RLHF. Its influence was formally recognized when the A3C paper (Mnih et al., 2016) received the **ICML 2026 Test of Time award** (ICML 2026, Seoul, July 2026) — the award given to a paper from roughly a decade earlier whose impact has lasted.
 
 ## Trust Region Policy Optimization (TRPO)
 
@@ -80,21 +80,32 @@ Why this specific construction works: when the advantage A is positive (the acti
 
 **Name & definition.** Generalized Advantage Estimation (Schulman et al., 2015 — the same broader research thread as TRPO) provides a principled way to compute the advantage estimate A(s, a) used above, balancing a tradeoff between using purely immediate reward signal (low bias, high variance) and relying more heavily on the critic's own value predictions further into the future (higher bias if the critic's estimates are imperfect, but lower variance) — a single tunable parameter (λ, lambda) smoothly interpolates between these two extremes. GAE is a standard component paired with PPO in most practical implementations, including in typical RLHF pipelines.
 
+## PPO's LLM-era descendants: GRPO, DAPO's clip-higher, and GSPO (brief)
+
+PPO's clipped ratio did not disappear in the LLM era — it was inherited and modified. The full story, with equations and intuition, is in [rl-for-llms.md](rl-for-llms.md); here is how each descendant relates to the PPO objective above.
+
+- **GRPO (DeepSeekMath, 2024; DeepSeek-R1, 2025)** keeps PPO's per-token `min(r·A, clip(r, 1−ε, 1+ε)·A)` exactly, but replaces the critic-plus-GAE advantage with a *group baseline*: sample several responses to the same prompt and use each response's reward minus the group's mean (originally also divided by the group's standard deviation). No value model is trained at all — the actor-critic idea from earlier in this file survives, but the "critic" is now just an average.
+- **DAPO's "clip-higher" (2025)** makes PPO's band asymmetric: `clip(r, 1−ε_low, 1+ε_high)` with ε_high > ε_low. In terms of the ceiling/floor picture above, only the *ceiling* for good actions is raised. The reason is that the ceiling limits growth *relative* to the current probability: with ε = 0.2, a token at probability 0.01 can only reach about 0.012 in one update, while a token at 0.9 is effectively unconstrained. A symmetric band therefore keeps rare-but-good tokens rare, the policy's randomness (entropy) collapses, and exploration stops. Raising only the ceiling lets those tokens grow while the floor still prevents over-eager suppression.
+- **GSPO (Qwen team, 2025)** moves the ratio from the token level to the *sequence* level: r becomes the whole response's probability ratio, length-normalized as a geometric mean, `(π_new(o|q) / π_old(o|q))^(1/|o|)`, and clipping is applied once per response. The motivation: the reward is given per sequence, so per-token ratios are noisy single-sample estimates whose noise accumulates over thousands of tokens — and in Mixture-of-Experts models, routing changes between the old and new policy make them noisier still. Clipping at the level where the reward actually lives is more stable.
+
+The common thread: every one of these is still "improve, but in small trusted steps" — the debate is only about *which* steps (per token or per sequence) to trust, and how symmetric the trust region should be.
+
 ## Comparison table
 
-| Method | Year | Key Innovation | Still Relevant (2026)? |
+| Method | Year | Key Innovation | Still Relevant (late 2026)? |
 |---|---|---|---|
 | REINFORCE | 1992 | Direct policy gradient via log-probability weighting | Foundational theory; high variance limits direct use |
 | Actor-critic (general) | — | Critic-based advantage reduces gradient variance | Foundational framing, used throughout modern methods |
-| A3C | 2016 | Parallel asynchronous actor-critic training | Influential; largely superseded by PPO in practice |
+| A3C | 2016 | Parallel asynchronous actor-critic training | Influential (ICML 2026 Test of Time award); largely superseded by PPO in practice |
 | TRPO | 2015 | Explicit KL trust-region constraint for stable updates | Foundational; largely superseded by PPO's simpler mechanism |
-| PPO | 2017 | Clipped surrogate objective — TRPO-like stability via simple gradient steps | Yes — dominant RL algorithm, including for RLHF |
+| PPO | 2017 | Clipped surrogate objective — TRPO-like stability via simple gradient steps | Yes — still the default general-purpose RL algorithm and the reference point for LLM RL |
+| GRPO family (GRPO, DAPO, Dr. GRPO, GSPO) | 2024-2025 | PPO-style clipping with a group-mean baseline instead of a critic; refined clipping/normalization | Yes — the most common choice for RL with verifiable rewards on LLMs |
 
 ## Relationship to other algorithms
 
 - PPO is the RL algorithm underlying classic RLHF's policy optimization stage — see [rlhf-and-alignment.md](../05-training-methodology/rlhf-and-alignment.md) for the full pipeline this fits into.
 - The KL-divergence constraint in TRPO (and PPO's softer version of the same idea) uses the same mathematical object covered in [loss-functions.md](../01-foundations/loss-functions.md), and reappears as the drift penalty in RLHF.
-- [rl-for-llms.md](rl-for-llms.md) is the dedicated bridge file connecting this general RL theory specifically to LLM training practice.
+- [rl-for-llms.md](rl-for-llms.md) is the dedicated bridge file connecting this general RL theory specifically to LLM training practice, including the GRPO/DAPO/Dr. GRPO/GSPO descendants of PPO summarized above.
 - Contrast with the value-based methods in [value-based-methods.md](value-based-methods.md) — policy gradient methods learn the policy directly rather than deriving it from a learned value function.
 
 ## Sources
@@ -104,3 +115,7 @@ Why this specific construction works: when the advantage A is positive (the acti
 - Schulman, Levine, Abbeel, Jordan, Moritz, "Trust Region Policy Optimization" (2015)
 - Schulman, Moritz, Levine, Jordan, Abbeel, "High-Dimensional Continuous Control Using Generalized Advantage Estimation" (2015) [GAE]
 - Schulman, Wolski, Dhariwal, Radford, Klimov, "Proximal Policy Optimization Algorithms" (2017)
+- Shao et al. (DeepSeek), "DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models" (2024) [GRPO]
+- Yu et al. (ByteDance Seed and collaborators), "DAPO: An Open-Source LLM Reinforcement Learning System at Scale" (2025) [clip-higher]
+- Zheng et al. (Qwen team), "Group Sequence Policy Optimization" (2025) [GSPO]
+- ICML 2026 Test of Time award to Mnih et al. (2016) [A3C]

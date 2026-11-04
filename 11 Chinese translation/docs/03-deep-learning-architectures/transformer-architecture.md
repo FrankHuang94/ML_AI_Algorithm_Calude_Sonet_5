@@ -1,6 +1,6 @@
 # Transformer架构
 
-几乎每一个其他地方讨论的大型模型都在[rlhf-and-alignment.md](../05-training-methodology/rlhf-and-alignment.md)任何产品模型都在[04-生成型号](../04-generative-models/)更多的图像/视频/音频,[06- 输入优化](../06-inference-optimization/)是Transformer或直接适应的Transformer.该文件从最初的原则建立了机制:自觉注意,然后多头注意,然后定位编码,然后三个主要布局变体 (编码解码器,仅编码器,仅编码器),LN前与后LN辩论,从原始2017年的论文到当今的边界模型的历史谱系,以及将建筑选择与计算和数据预算联系在一起的扩展法则.
+这是本知识库的基石文件。本库其他地方讨论的几乎所有大模型——[rlhf-and-alignment.md](../05-training-methodology/rlhf-and-alignment.md) 中的每一个 LLM、[04-generative-models](../04-generative-models/) 中涉及文本(以及越来越多地涉及图像/视频/音频)的每一个生成模型,以及 [06-inference-optimization](../06-inference-optimization/) 中的大多数推理优化技术——都是 Transformer 或其直接改编。本文件从第一性原理出发逐步构建这一机制:自注意力,然后是多头注意力,然后是位置编码,然后是三种主要布局变体(编码器-解码器、仅编码器、仅解码器)、pre-LN 与 post-LN 之争、对 2025-2026 年模块改进(门控注意力、局部/全局注意力、超连接)的简要介绍、从 2017 年原始论文到当今前沿模型的历史谱系,以及把架构选择与算力和数据预算联系起来的扩展定律(scaling laws)。
 
 ## 为什么需要注意
 
@@ -102,12 +102,12 @@ PE(pos, 2i+1) = cos(pos / 10000^(2i/d))
 
 **学习了位置编码.**简单的替代方案:只需给每个位置自己的学习嵌入向量 (从表上看,就像词元嵌入),通过像任何其他参数一样的背扩散训练,而不是预先固定. 这更容易实现,但不会自动将其归结为比训练中看到的长度更长的序列长度 (模型从未遇到的位置索引没有学习嵌入),而状编码原则上可以计算任意位置.
 
-**转型位置嵌入式 (ROPE).**现在在2026年起的大型语言模型中占主导地位的方法.
+**RoPE(Rotary Position Embedding,旋转位置编码)。** 截至 2026 年末,这是大语言模型中占主导地位的方法。
 
 - **起源.**苏及其他研究人员"RoFormer:增强转变器与旋转位置嵌入" (2021).
 - **核心机制.**转换为 输入嵌入式,*旋转*在计算注意点产品之前,查询和关键向量 (以维对,被视为2D平面) 按与其在序列中的位置相比例的角度进行.
 - **为什么这很重要.**这种结构具有优雅的特性:在位置m的查询和位置n的键之间,两者都被 RoPE 旋转后,最终只依赖于它们的点数.*相对*这给了"相对位置意识",而非其绝对位置.这只暗示了突形编码的确切,数学上清洁的形式,并且往往更好地将其概括到训练中看到的序列长度之外 (这是一个重要的实践属性,因为生产LLM通常被要求处理比最初训练的较长的文本) 虽然远远超越训练长度仍然通常需要额外的技术 (旋转频率的插入/抽插方案) 才能在实践中运作良好.
-- **现状.**截至2026年,RoPE是大多数现代开放权重和边界LLM中默认位置编码方案,它已经取代了用于大规模语言模型预训的双腰和简单学习位置编码.
+- **现状。** 截至 2026 年末,RoPE 是大多数现代开放权重模型和前沿 LLM 的默认位置编码方案,在大规模语言模型预训练中已取代了正弦位置编码和简单的可学习位置编码。
 
 ## 编码-解码器,仅编码和仅解码器架构
 
@@ -119,9 +119,9 @@ PE(pos, 2i+1) = cos(pos / 10000^(2i/d))
 
 **只有解码器 (GPT式).**起源:Radford等人 (OpenAI), "通过生成预训练提高语言理解" (GPT-1, 2018).仅使用解码器堆 (因果化伪装的自我注意,没有交叉注意,因为没有单独的编码器),通过下一个代码预测 (预测每个词元从之前的词元中预测) 查看[autoregressive-generation.md](../04-generative-models/autoregressive-generation.md)).
 
-**为什么只有解码器才能赢得创业 LLM.**几个相似的原因,值得明确说明,因为这是该领域近期历史中最重要的架构决定之一: (1) 原始,无标签的文本的下一个代码预测是一个训练目标,基本上无限的免费监督每个文档中的每个代码同时是一个训练示例,没有需要手动标签或掩盖方案设计,这很重要,一旦你试图使用互联网规模文本; (2) 一个单独的解码模型自然统一"理解"和"代码" 相同的下一个代码预测目标,应用于足够大规模,产生一个模型,也可以回答问题,总结和遵循说明,而不需要一个任务特定的架构或调整,以实现解码能力; (3) 简单零码模型是单独的,每个模型的基础架构 (见GPT-2),在实体上可以实现一个单独的结构,并使每个模型的成本变得非常简单,在实体上可以实现一个单独的基础架构,并使每个模型的实际结构变得非常简单.[历史timeline-2017-2023.md](../08-history/timeline-2017-2023.md)) 到2026年,基本上每个边界通用LLM (在所有主要实验室中) 都仅用于解码器;只有编码器的模型仍然在活跃,真正用于嵌入/检索和分类任务中,双向环境是一个真正的优势,并且不需要开放的生成,而真正的编码器-解码器Transformer仍然存在于某些特定翻译和其他序列成序列的应用中.
+**为什么仅解码器架构在生成式 LLM 中胜出。** 有几个相互印证的原因,值得明确说出来,因为这是该领域近年来影响最深远的架构决策之一:(1)在原始、无标注文本上做下一个词元预测,是一种几乎拥有无限免费监督信号的训练目标——每篇文档中的每个词元同时都是一个训练样本,无需人工标注,也无需设计掩码方案,一旦要使用互联网规模的文本,这一点就极其重要;(2)单个仅解码器模型天然地统一了"理解"与"生成"——同一个下一词元预测目标,在足够大的规模上应用,就能得到一个也会回答问题、做摘要、遵循指令的模型,而无需为每种能力准备特定任务的架构或微调头;(3)仅解码器模型在架构上更简单(没有独立的编码器,没有交叉注意力),在每一点架构复杂度都有真实工程成本的规模下,这简化了训练和服务基础设施;(4)从经验上看,大规模训练的仅解码器模型仅靠提示(零样本和少样本——见术语表)就能泛化到极其广泛的下游任务,这一能力成为 GPT-2/GPT-3 系列工作的核心发现(见 [08-history/timeline-2017-2023.md](../08-history/timeline-2017-2023.md))。截至 2026 年末,基本上所有前沿通用 LLM(各大实验室皆然)都是仅解码器架构;仅编码器模型仍在嵌入/检索和分类任务中被实际使用——这些任务中双向上下文是真正的优势,且不需要开放式生成;而真正的编码器-解码器 Transformer 则仍存在于一些翻译专用及其他序列到序列形态的应用中。
 
-## 预年与后年
+## Pre-LN 与 Post-LN
 
 **问题是什么?**哪里,应该准确地进行层正常化 (见[regularization-techniques.md](../01-foundations/regularization-techniques.md)) 与Transformer块的注意力和输送次层相对?
 
@@ -129,9 +129,9 @@ PE(pos, 2i+1) = cos(pos / 10000^(2i/d))
 
 **预LN (现在是主导选择).**适用于正常化*在之前*低层,剩余连接完全绕过正常化: `output = x + Sublayer(LayerNorm(x))`.
 
-**为什么LN前赢得了.**在LN后,残余路径本身经历了正常化操作,特别是在训练初期,特别是对于许多变体块的非常深层堆,发现训练不稳定,通常需要仔细的,缓慢的学习速度升温时间表 (见[optimization-algorithms.md](../01-foundations/optimization-algorithms.md)为了避免分歧.在LN前,残余路径是一个清洁,无障碍的身份连接 (直接没有发生任何事),使其保持了残余连接所谓的梯度高速公路完全完整,并使得更深的Transformer堆能够稳定地训练,并且更不脆弱的超参数调整. 折衷是LN前的模型原则上可以有更少的正常化最终输出 (因为最后的操作本身不是正常化),这就是为什么许多LN前的架构在输出投影之前在整个堆后添加一个最终LayerNorm/RMSN的选择.截至2026年,LN前 (或其小变体) 是基本上所有大规模的Transformer预训练标准.
+**pre-LN 为什么胜出。** 在 post-LN 中,残差路径本身要经过一次归一化操作;人们发现,这会让训练变得不那么稳定——在训练早期尤其如此,对于由许多 Transformer 模块组成的极深堆叠更是如此——往往需要精心设计、缓慢的学习率预热(warmup)计划(见 [optimization-algorithms.md](../01-foundations/optimization-algorithms.md))来避免发散。在 pre-LN 中,残差路径是一条干净、畅通的恒等连接(不对其做任何直接操作),从而完整保留了残差连接本应提供的梯度"高速公路",并在经验上让更深的 Transformer 堆叠能以不那么脆弱的超参数调优稳定训练。代价是,pre-LN 模型的最终输出在原理上可能归一化得不那么充分(因为最后一步操作本身不是归一化),这就是为什么许多 pre-LN 架构会在整个堆叠之后、输出投影之前再加一层最终的 LayerNorm/RMSNorm。截至 2026 年末,pre-LN(或其小幅变体)是基本上所有大规模 Transformer 预训练的标准选择。
 
-## 建筑图
+## 架构图
 
 ```mermaid
 flowchart TD
@@ -148,13 +148,44 @@ flowchart TD
     end
 ```
 
-## 从"注意力就是你需要的"到现代的边界模型
+## 模块的近期改进(2025-2026)
+
+上面的核心模块自 2021 年前后就相当稳定,但有几项改进在 2025-2026 年获得了实际应用。之所以值得了解,是因为它们如今已出现在已发布的前沿级模型中。这里刻意写得简短;另外两大类变化在其他文件中介绍:
+
+- **更廉价的注意力变体**——分组查询注意力(GQA)、多头潜在注意力(Multi-head Latent Attention,MLA,为每个词元缓存一个小的压缩潜向量,而不是完整的 key 和 value),以及稀疏注意力(每个 query 只关注过去词元中被选出的一个子集,例如 DeepSeek Sparse Attention)——见 [kv-cache-and-attention-optimization.md](../06-inference-optimization/kv-cache-and-attention-optimization.md)。
+- 用线性注意力/SSM 层替换大部分注意力层的**混合架构**(例如 Gated DeltaNet 与全注意力按 3:1 比例混合)见 [state-space-models.md](state-space-models.md)。
+
+### 门控注意力与注意力汇聚点(attention sinks)
+
+**问题:注意力汇聚点。** 由于 softmax 强制每个 query 的注意力权重之和为 1,一个找不到*任何*相关内容的头仍然必须把权重放在某处。训练出来的模型会学会把这些多余的权重倾倒在少数几个几乎不携带信息的词元上——最常见的是序列的第一个词元。这些词元被称为**注意力汇聚点(attention sinks)**(由 Xiao 等在 2023 年关于流式长输入的工作中发现)。汇聚点与"巨量激活(massive activations)"相关(少数隐藏状态数值比其余数值大好几个数量级),这会给低精度训练和量化带来麻烦(见 [quantization.md](../06-inference-optimization/quantization.md)),也可能破坏训练稳定性。有些设计则改为显式添加一个可学习的"汇聚点",专门用来接收这部分剩余权重。
+
+**解决办法:门控注意力。** Qwen 的门控注意力工作(2025;获 NeurIPS 2025 最佳论文奖)在每个头的输出上加了一个逐元素的 sigmoid 门,位置紧接在缩放点积注意力(SDPA)之后、输出投影之前:
+
+```
+o = SDPA(Q, K, V) ⊙ σ(x · W_g)
+```
+
+逐项解读:σ(sigmoid 函数)把该词元输入 x 经过可学习投影后的每个分量压缩到 0-1 之间,⊙ 表示逐元素相乘。当某个头对当前词元没有有用的贡献时,门可以直接关闭(取值接近 0)——于是这个头不再需要靠把注意力停放在汇聚点词元上来伪装成"空操作"。论文报告称,这一简单改动提高了训练稳定性,并在很大程度上消除了注意力汇聚点和巨量激活。例如,Qwen3-Next 和 Qwen3.5 的全注意力层就采用了它。
+
+### 局部与全局(滑动窗口)注意力交错
+
+**机制。** 在**滑动窗口(局部)注意力**中,每个词元只关注最近的 W 个词元(比如几千个),而不是整个前缀,因此无论上下文多长,该层每个词元的计算量和 KV 缓存都以 W 为上限。纯局部注意力无法直接连接相距很远的词元,所以现代设计把局部层与偶尔出现的**全局**(全注意力)层**交错**排列:局部层以低成本处理邻近结构,全局层提供长程查找。滑动窗口至少可以追溯到 Longformer(2020)和 Mistral 7B(2023);2024-2026 年的模式是固定的局部:全局层排布——例如 Google 的 Gemma 2 和 Gemma 3 中的局部:全局层模式,以及 OpenAI 的 gpt-oss(2025),它交替使用带状窗口注意力层和稠密注意力层。它可以看作 [state-space-models.md](state-space-models.md) 中混合思想的"纯注意力版表亲":大多数层廉价且内存有界,少数层昂贵但精确。
+
+### 超连接与 DeepSeek 的 mHC
+
+**背景。** 残差连接(`x + Sublayer(x)`,见上文 pre-LN 一节)是模块中自 2015-2017 年以来几乎没有变过的少数部分之一。每一层都从同一条"残差流(residual stream)"读取,并把结果写回其中——残差流就是在网络中逐层流动的那个隐藏状态向量。
+
+**超连接(Hyper-connections)**(字节跳动,2024)对此做了推广:不再只有一条残差流,而是保留 *n* 条并行的流(比如隐藏向量的 4 个副本),并用小的可学习矩阵来决定每条流有多少输入到该层、该层的输出如何写回各条流,以及各条流在层与层之间如何相互混合。这为信息跨深度传递提供了更灵活的路径。问题在于:这些混合矩阵不受约束,把一百多层的这些矩阵连乘起来,可能会放大或缩小信号——从而丧失**恒等映射性质**(一个毫无贡献的层会把输入原样传下去),而这一性质正是残差连接最初得以稳定的原因。据报道,这在大规模下会导致训练不稳定。
+
+**mHC——流形约束超连接(Manifold-Constrained Hyper-Connections)**(DeepSeek,2025 年 12 月 / 2026 年 1 月)把流混合矩阵约束为**双随机矩阵(doubly stochastic)**:所有元素非负,且每一行、每一列之和都为 1(所有这类矩阵构成的集合称为 Birkhoff 多胞形)。该约束通过 **Sinkhorn 归一化**来实现——交替地把行和列重新缩放到和为 1,重复几次即可。为什么这有帮助:双随机矩阵只会在各条流之间*重新分配*信号——类似于洗牌加取平均——所以它既不会让总量爆炸,也不会把它缩向零;双随机矩阵的乘积仍是双随机矩阵,因此堆叠很多层后依然表现良好;而单位矩阵本身就是双随机矩阵,所以普通残差连接仍作为特例保留下来。DeepSeek 报告称,mHC 在大规模下保持了普通残差的训练稳定性,同时保留了多流的好处;它也是 DeepSeek-V4 架构的一部分(据报道,2026 年 4 月)。它能否在 DeepSeek 之外成为标准,仍是未知数。
+
+## 谱系:从"Attention Is All You Need"到现代前沿模型
 
 **起源.**瓦斯瓦尼等人 (谷歌), "注意力是你需要的" (2017) 引入了上面描述的完整架构 (多头自注意,突形定位编码,编码器-解码器布局,LN后),最初是机器翻译.
 
-从这个起点开始,对这个库最相关的谱系大致运行:仅编码器 (BERT, 2018) 和仅编码器 (GPT-1, 2018) 作为专业变体开 → GPT线 (GPT-2, 2019; GPT-3, 2020) 证明了扩展仅编码器模型的参数和训练数据产生了越来越普遍的,不具备射击能力的行为,没有建筑变化 →预LN成为标准,因为模型变得更深 → RoPE (2021) 移动了突/学习的位置编码 → 专家混合变体 (见[mixture-of-experts.md](mixture-of-experts.md)) 开始从每词元计算成本 →集成查询和多查询注意力中分离参数数数量 (见 [kv-cache-and-attention-optimization.md](../06-inference-optimization/kv-cache-and-attention-optimization.md)通过"长文本模型"来使服务更便宜 →到20世纪20年代中期,实验室中的边界模型是,从建筑角度来看,仅使用解码器的Transformer (通常是使用MoE层) 使用RoPE和LN前/RMSNorm,规模,培训数据和培训后方法更加不同 (见[05-培训方法](../05-training-methodology/)许多实验室的基础建筑选择非常相似,这是该领域近期历史中一个显著而广泛观察到的模式.
+从这个起点出发,与本知识库最相关的谱系大致如下:仅编码器(BERT,2018)和仅解码器(GPT-1,2018)作为专门化变体分叉出来 → GPT 系列(GPT-2,2019;GPT-3,2020)证明,在不改变架构的情况下扩大仅解码器模型的参数量和训练数据,会产生越来越通用、具备少样本能力的行为 → 随着模型变深,pre-LN 成为标准 → RoPE(2021)取代了正弦/可学习位置编码 → 混合专家变体(见 [mixture-of-experts.md](mixture-of-experts.md))开始让参数量与每词元计算成本脱钩 → 分组查询注意力和多查询注意力(见 [kv-cache-and-attention-optimization.md](../06-inference-optimization/kv-cache-and-attention-optimization.md))被采用,以降低长上下文模型的服务成本 → 到 2020 年代中期,各实验室的前沿模型在架构上都是使用 RoPE 和 pre-LN/RMSNorm 的仅解码器 Transformer(常带 MoE 层),它们之间的差异更多在于规模、训练数据和后训练方法(见 [05-training-methodology](../05-training-methodology/)),而非基础架构。这种趋同——许多实验室得出了非常相似的核心架构选择——本身就是该领域近期历史中一个显著且被广泛观察到的现象。自 2025 年以来,这种趋同在边缘处有所松动——门控注意力、局部/全局交错、压缩与稀疏注意力、混合线性注意力层以及多流残差(均见上一节或其链接)如今在各实验室之间有所不同——但"仅解码器、pre-norm、RoPE 加 MoE"的骨架仍是共同核心。
 
-## 规模定位法:卡普兰等人和辛奇拉
+## 扩展定律:Kaplan 等与 Chinchilla
 
 **卡普兰等人",神经语言模型的扩展法则" (2020年).**这篇论文显示,一个Transformer语言模型的损失遵循一个顺利的,可预测的权力法关系,三个数量:模型大小 (参数计数),数据集大小 (词元见),和计算预算 (大约是参数 ×词元处理) 每个更大的值,相对于其他进行适当的处理,可靠地产生较低的损失,以准确的方式提前抽出和规划大规模的训练运行,而不是通过试错发现正确的规模.本文的一个具体,影响力的结论是,鉴于固定的计算预算,更好花在一个较大的模型上训练相对较少的数据,而不是花在更平衡的方法上 这个指点的实践者对训练非常大的模型的数据集进行了训练,后期,这些模型的规模较小.
 
@@ -172,19 +203,29 @@ flowchart TD
 
 ## 与其他算法的关系
 
-- 自注意力Q/K/V机制是直接的泛化 Bahdanau/Luong注意力[rnn-lstm-gru.md](rnn-lstm-gru.md).
-- 剩余连接和正常化层一般在[cnn-family.md](cnn-family.md)其他[regularization-techniques.md](../01-foundations/regularization-techniques.md)它们在Transformer块内具体位置.
-- 转变器块中的输送前进子层是现代MoE架构中插入的专家混合路由[mixture-of-experts.md](mixture-of-experts.md).
-- 关注的 O(n2) 成本在序列长度 n 是状态空间模型的直接动机 (见 [state-space-models.md](state-space-models.md)) 和大多数人[06- 输入优化](../06-inference-optimization/)(FlashAttention,KV缓存管理,GQA/MQA,投机解码)
-- 详细介绍了下一个标记预测培训[autoregressive-generation.md](../04-generative-models/autoregressive-generation.md)其他[pretraining-strategies.md](../05-training-methodology/pretraining-strategies.md).
+- 自注意力的 Q/K/V 机制是 Bahdanau/Luong 注意力的直接推广——见 [rnn-lstm-gru.md](rnn-lstm-gru.md)。
+- 残差连接和归一化层的一般性介绍见 [cnn-family.md](cnn-family.md) 和 [regularization-techniques.md](../01-foundations/regularization-techniques.md);本文件介绍的是它们在 Transformer 模块中的具体位置。
+- 在现代 MoE 架构中,混合专家路由插入的位置正是 Transformer 模块中的前馈子层——见 [mixture-of-experts.md](mixture-of-experts.md)。
+- 注意力在序列长度 n 上的 O(n²) 成本,是状态空间模型(见 [state-space-models.md](state-space-models.md))以及 [06-inference-optimization](../06-inference-optimization/) 中大部分内容(FlashAttention、KV 缓存管理、GQA/MQA、推测解码)的直接动机。
+- 更廉价的注意力变体(GQA/MQA、MLA、稀疏注意力)见 [kv-cache-and-attention-optimization.md](../06-inference-optimization/kv-cache-and-attention-optimization.md);混合线性注意力/全注意力堆叠(Gated DeltaNet)见 [state-space-models.md](state-space-models.md)。
+- 注意力汇聚点和巨量激活对低精度格式有影响——见 [quantization.md](../06-inference-optimization/quantization.md)。
+- 下一词元预测训练的深入介绍见 [autoregressive-generation.md](../04-generative-models/autoregressive-generation.md) 和 [pretraining-strategies.md](../05-training-methodology/pretraining-strategies.md)。
 
 ## 来源
 
-- 瓦斯瓦尼等人",你只需要注意力" (2017)
-- 德文,张,李,图塔诺瓦, "BERT:深度双向Transformer预训练语言理解" (2018)
-- 拉德福德等人",通过生成式预训练提高语言理解" (2018) [子-1]
-- 拉德福德等人",语言模型是无监督的多任务学习者" (2019) [子-2]
-- 布朗等人",语言模型是少人学会的" (2020) [子3]
-- 苏及其他研究人员"RoFormer:增强转变器与旋转位置嵌入" (2021)
-- 卡普兰等人",神经语言模型的扩展法则" (2020)
-- 霍夫曼等人",训练计算最佳的大语言模型" (2022) [鱼]
+- Vaswani 等, "Attention Is All You Need"(2017)
+- Devlin, Chang, Lee, Toutanova, "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding"(2018)
+- Radford 等, "Improving Language Understanding by Generative Pre-Training"(2018)[GPT-1]
+- Radford 等, "Language Models are Unsupervised Multitask Learners"(2019)[GPT-2]
+- Brown 等, "Language Models are Few-Shot Learners"(2020)[GPT-3]
+- Su 等, "RoFormer: Enhanced Transformer with Rotary Position Embedding"(2021)
+- Kaplan 等, "Scaling Laws for Neural Language Models"(2020)
+- Hoffmann 等, "Training Compute-Optimal Large Language Models"(2022)[Chinchilla]
+- Xiao 等, "Efficient Streaming Language Models with Attention Sinks"(2023)
+- Qwen 团队, "Gated Attention for Large Language Models"(2025;NeurIPS 2025 最佳论文奖)[门控注意力]
+- Beltagy, Peters, Cohan, "Longformer: The Long-Document Transformer"(2020);Jiang 等, "Mistral 7B"(2023)[滑动窗口注意力]
+- Gemma 团队(Google),Gemma 2(2024)与 Gemma 3(2025)技术报告;OpenAI,gpt-oss 模型卡(2025)[局部/全局注意力交错]
+- Zhu 等(字节跳动), "Hyper-Connections"(2024)
+- DeepSeek-AI, "mHC: Manifold-Constrained Hyper-Connections"(2025 年 12 月 / 2026 年 1 月)
+- Sinkhorn, Knopp, "Concerning nonnegative matrices and doubly stochastic matrices"(1967)[Sinkhorn 归一化]
+- DeepSeek-AI, DeepSeek-V4 技术报告(2026 年 4 月,据报道)[mHC 投入生产]

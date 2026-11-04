@@ -1,6 +1,6 @@
 # Diffusion Models
 
-Diffusion models are, as of 2026, the dominant approach to image, video, and audio generation. This file covers the forward/reverse process at the core of the method, the DDPM formulation that made it practical, its connection to score-based generative modeling, the latent diffusion architecture that powers most deployed systems, and the classifier-guidance techniques used to steer generation.
+Diffusion models are, as of late 2026, the dominant approach to image, video, and audio generation. This file covers the forward/reverse process at the core of the method, the DDPM formulation that made it practical, its connection to score-based generative modeling, the latent diffusion architecture that powers most deployed systems, the classifier-guidance techniques used to steer generation, and — newer and still experimental — the application of diffusion to text itself (diffusion language models).
 
 ## The forward (noising) and reverse (denoising) process
 
@@ -74,7 +74,7 @@ guided_prediction = uncond_pred + w · (cond_pred − uncond_pred)
 
 where w > 1 is the guidance scale (how strongly to push toward the condition). Walkthrough: the difference between the conditioned and unconditioned predictions represents "what specifically the condition adds"; amplifying that difference (rather than just using the conditioned prediction directly) pushes generation to more strongly reflect the prompt/condition than a simple conditioned prediction alone would, at some cost to overall sample diversity if the guidance scale is pushed too high.
 
-**Why classifier-free guidance won.** It requires no separate classifier model, works with whatever conditioning signal (text, class label, image) the main diffusion model was trained on rather than being limited to a specific classifier's outputs, and has empirically produced better results — this is why essentially all deployed text-to-image diffusion systems as of 2026 use classifier-free guidance rather than classifier guidance.
+**Why classifier-free guidance won.** It requires no separate classifier model, works with whatever conditioning signal (text, class label, image) the main diffusion model was trained on rather than being limited to a specific classifier's outputs, and has empirically produced better results — this is why essentially all deployed text-to-image diffusion systems as of late 2026 use classifier-free guidance rather than classifier guidance.
 
 ## Flow matching and rectified flow (the current-generation training objective)
 
@@ -88,9 +88,55 @@ where w > 1 is the guidance scale (how strongly to push toward the condition). W
 
 Tying together threads from this file and from [gans.md](gans.md): stable, simple, likelihood-adjacent training (no adversarial game to destabilize); strong empirical sample diversity (mode-collapse-type failures, endemic to GANs, are not a comparable concern for diffusion training); a natural, well-understood mechanism (classifier-free guidance) for conditioning generation on text/class/other signals with a controllable strength; and — via latent diffusion specifically — a practical path to high-resolution generation at a computationally reasonable cost. The same core noising/denoising framework has generalized well beyond static images to video (extending the noising process across a temporal dimension as well as spatial ones) and audio generation, which is part of why diffusion has become the default generative approach across multiple modalities, not just images.
 
+## Diffusion for text: diffusion language models (dLLMs)
+
+**Name & definition.** A **diffusion language model (dLLM)** generates text by starting from a block of "blank" positions and filling them in over a small number of parallel refinement steps, instead of writing one token at a time from left to right the way autoregressive LLMs do (see [autoregressive-generation.md](autoregressive-generation.md)).
+
+**Why text needs a different kind of "noise."** Gaussian noise works for images because pixels are continuous numbers — "the same pixel, slightly perturbed" is meaningful. Text is made of discrete tokens drawn from a fixed vocabulary; there is no sensible meaning for "token #4071 plus 0.3." The approach that has worked best for language is **masked (absorbing-state) discrete diffusion**: the forward "noising" process replaces tokens with a special `[MASK]` symbol instead of adding Gaussian noise. "Absorbing state" means that once a position becomes `[MASK]`, it stays masked for the rest of the forward process — the mask is a state the process falls into and never leaves. Push the process all the way and every position is `[MASK]`: that fully masked sequence is text's equivalent of "pure static."
+
+**Origin.** Discrete-state diffusion was formalized by Austin et al. ("D3PM," 2021), which included the absorbing/mask variant; 2024 work such as MDLM (Sahoo et al.) and SEDD (Lou et al.) simplified and strengthened the recipe for language. The 2025 step was scale: **LLaDA** (Nie et al., 2025) trained an open 8B-parameter masked-diffusion language model from scratch — the size of a conventional mid-sized open LLM.
+
+**Core mechanism — training.** Take a real text x₀, pick a random masking ratio t between 0 and 1, and mask each token independently with probability t to get xₜ. A Transformer that sees the whole sequence at once (bidirectional attention — no causal mask) is trained to predict the original token at every masked position:
+
+```
+Loss ≈ 𝔼_{x₀, t, xₜ} [ Σ_{i : xₜⁱ = [MASK]}  −log p_θ( x₀ⁱ | xₜ ) ]      (plus a weighting that depends on t, omitted here)
+```
+
+Walkthrough: this is ordinary cross-entropy (see [loss-functions.md](../01-foundations/loss-functions.md)), counted only on the masked positions — "given the visible tokens, what was hidden under each mask?" If that sounds like BERT's masked language modeling (see [pretraining-strategies.md](../05-training-methodology/pretraining-strategies.md)), it is a close relative. The crucial difference is that BERT always masks a small fixed fraction (around 15%), whereas a dLLM is trained across *every* masking ratio from "almost nothing hidden" to "everything hidden." Learning to recover text from a fully masked state is what turns a fill-in-the-blank model into a generator.
+
+**Core mechanism — generation.** Put the prompt in front of an answer region made entirely of `[MASK]` tokens. At each step the model predicts *all* masked positions at once; the sampler commits only the predictions it is most confident about, leaves (or puts back) the rest as `[MASK]`, and repeats. A toy example:
+
+```
+ prompt (fixed):  "Q: What is the capital of France?  A:"
+ answer region:   5 slots, filled in 3 steps instead of 5
+
+ step 0:   [M]     [M]       [M]   [M]     [M]    ← start fully masked
+ step 1:   The     [M]       [M]   Paris   [M]    ← predict every slot at once,
+                                                     commit only the most confident
+ step 2:   The     [M]       is    Paris   .
+ step 3:   The     capital   is    Paris   .      ← done: 5 tokens, 3 network calls
+
+ autoregressive, for contrast: 5 tokens = 5 sequential network calls, strictly left → right
+```
+
+**Why people are interested.** (1) **Parallel decoding:** if many tokens can be committed per step, a sequence of N tokens needs far fewer than N sequential network calls — the same "one-token-per-forward-pass" bottleneck that speculative decoding attacks from a different angle (see [speculative-decoding.md](../06-inference-optimization/speculative-decoding.md)). (2) **Bidirectional context:** every position can look at every other, so the model can fill in the middle of a text (infilling) or revise a draft rather than only append. (3) **Flexible order:** in principle, nothing forces left-to-right generation.
+
+**The catches.** Each step is a forward pass over the whole sequence, and because attention is bidirectional, the representation of an already-committed token can change when a later token is unmasked — so the standard KV-cache trick that makes autoregressive decoding cheap (see [kv-cache-and-attention-optimization.md](../06-inference-optimization/kv-cache-and-attention-optimization.md)) does not apply directly. Committing too many tokens per step hurts quality: tokens unmasked in the same step are predicted without seeing each other's final values, so they can be individually plausible but mutually inconsistent (one slot picks "New," another picks "Angeles"). The speed-quality tradeoff is therefore controlled by how many tokens the sampler commits per step.
+
+**Notable systems (dated examples).**
+- **LLaDA** (2025) — open 8B masked-diffusion LM (above); a common reference point for academic dLLM research.
+- **Mercury** (Inception Labs, 2025) — a commercial dLLM family pitched on generation speed. **Mercury 2** (February 2026, reported) is marketed by the vendor as the first reasoning-capable dLLM, at roughly 1,000 tokens per second; both figures are vendor claims, not independently verified here.
+- **Gemini Diffusion** (Google DeepMind, announced May 2025) — an experimental dLLM; it was still experimental/waitlisted as of mid-2026 (reported).
+
+**Research signal: ICML 2026.** Two of the ICML 2026 Outstanding Paper awards (Seoul, July 2026) went to diffusion work:
+- *"The Flexibility Trap: Rethinking the Value of Arbitrary Order in Diffusion Language Models"* argues that the ability to generate tokens in any order — often cited as a headline advantage of dLLMs — is less valuable than assumed. Read alongside the "catches" above, it pushes the case for dLLMs back toward speed rather than order-flexibility.
+- *"High-Accuracy Sampling for Diffusion Models and Log-Concave Distributions"* is a theory paper on drawing accurate samples from diffusion models and from **log-concave distributions** (distributions whose log-density is a concave function — single-peaked, without separate competing modes). It concerns diffusion sampling in general, not text specifically.
+
+**Current status.** Experimental / emerging. dLLMs are a credible, actively researched route to faster text generation, with at least one commercial family and one experimental frontier-lab model. But autoregressive decoder-only Transformers remain overwhelmingly dominant for frontier LLMs as of late 2026, and it is not yet established that dLLMs match autoregressive quality at frontier scale, or that their speed advantage survives against well-optimized autoregressive serving (speculative decoding, batching, quantization).
+
 ## Current frontier status
 
-Diffusion models remain the dominant approach for image, video, and audio generation as of 2026. The main practical drawback relative to some alternatives (particularly GANs, and to a lesser extent some newer few-step/distilled diffusion variants) is inference speed — the classic multi-step denoising process requires many sequential network evaluations per generated sample, which is markedly slower than a GAN's single forward pass or an autoregressive model's per-token generation.
+Diffusion models remain the dominant approach for image, video, and audio generation as of late 2026. The main practical drawback relative to some alternatives (particularly GANs, and to a lesser extent some newer few-step/distilled diffusion variants) is inference speed — the classic multi-step denoising process requires many sequential network evaluations per generated sample, which is markedly slower than a GAN's single forward pass or an autoregressive model's per-token generation.
 
 Several families of technique attack this speed problem, and they're worth distinguishing:
 - **Better samplers** (e.g., **DDIM**, Song et al. 2021) reinterpret the trained model so that generation can take *fewer, larger* steps — often reducing hundreds of steps to tens — and make the sampling process deterministic (the same noise input always yields the same image, useful for reproducibility and editing) without retraining the model.
@@ -99,9 +145,11 @@ Several families of technique attack this speed problem, and they're worth disti
 
 The field has made real, reported progress on all three fronts, to the point where few-step generation is increasingly practical; still, many-step diffusion remains the default when maximum quality matters most, as of this writing.
 
+For text, diffusion language models (above) remain an experimental alternative to autoregressive generation, not (yet) a replacement for it.
+
 ## Comparison table
 
-| System | Year | Key Innovation | Still Relevant (2026)? |
+| System | Year | Key Innovation | Still Relevant (late 2026)? |
 |---|---|---|---|
 | DDPM | 2020 | Noise-prediction training objective, stable and simple | Yes — foundational formulation, still directly used |
 | Score-based generative modeling | 2019-2021 | Score-function framing, unifies with DDPM theoretically | Yes — theoretical backbone, used interchangeably with DDPM framing |
@@ -109,6 +157,8 @@ The field has made real, reported progress on all three fronts, to the point whe
 | Flow matching / rectified flow | 2022-2023 | Velocity-field training; straighter, fewer-step paths | Yes — increasingly the objective for new large image/video models |
 | Latent diffusion (Stable Diffusion) | 2021/2022 | Diffuse in compressed VAE latent space, not raw pixels | Yes — dominant practical architecture |
 | Classifier-free guidance | 2022 | Amplify conditioned-vs-unconditioned prediction difference | Yes — standard conditioning technique |
+| Masked (absorbing-state) discrete diffusion — D3PM, MDLM | 2021-2024 | Diffusion over discrete tokens by progressive masking | Yes — the foundation of current dLLMs |
+| Diffusion language models (LLaDA, Mercury, Gemini Diffusion) | 2025-2026 | Generate text by parallel unmasking over a few steps | Experimental — promising for speed; autoregressive still dominant for frontier LLMs |
 
 ## Relationship to other algorithms
 
@@ -116,6 +166,8 @@ The field has made real, reported progress on all three fronts, to the point whe
 - Diffusion's stability advantage is best understood in direct contrast to GAN training instability — see [gans.md](gans.md).
 - Text conditioning via cross-attention connects directly to the attention mechanism in [transformer-architecture.md](../03-deep-learning-architectures/transformer-architecture.md).
 - The noise-prediction regression objective is an application of MSE loss — see [loss-functions.md](../01-foundations/loss-functions.md).
+- Diffusion language models are the main non-autoregressive alternative for text — contrast with [autoregressive-generation.md](autoregressive-generation.md); their training objective is a generalization of BERT-style masked language modeling in [pretraining-strategies.md](../05-training-methodology/pretraining-strategies.md); and their parallel-decoding pitch competes with [speculative-decoding.md](../06-inference-optimization/speculative-decoding.md).
+- Flow matching connects back to the continuous-flow view in [flow-based-models.md](flow-based-models.md).
 
 ## Sources
 
@@ -129,3 +181,9 @@ The field has made real, reported progress on all three fronts, to the point whe
 - Song et al., "Consistency Models" (2023)
 - Dhariwal, Nichol, "Diffusion Models Beat GANs on Image Synthesis" (2021) [classifier guidance]
 - Ho, Salimans, "Classifier-Free Diffusion Guidance" (2022)
+- Austin, Johnson, Ho, Tarlow, van den Berg, "Structured Denoising Diffusion Models in Discrete State-Spaces" (2021) [D3PM, incl. absorbing/mask diffusion]
+- Sahoo et al., "Simple and Effective Masked Diffusion Language Models" (2024) [MDLM]; Lou, Meng, Ermon, "Discrete Diffusion Modeling by Estimating the Ratios of the Data Distribution" (2024) [SEDD]
+- Nie et al., "Large Language Diffusion Models" (2025) [LLaDA, open 8B dLLM]
+- Inception Labs, Mercury (2025) and Mercury 2 (February 2026) announcements — speed and "first reasoning dLLM" figures are vendor claims (reported)
+- Google DeepMind, Gemini Diffusion (experimental, announced May 2025; still waitlisted as of mid-2026, reported)
+- ICML 2026 Outstanding Papers: "The Flexibility Trap: Rethinking the Value of Arbitrary Order in Diffusion Language Models"; "High-Accuracy Sampling for Diffusion Models and Log-Concave Distributions" (2026)
