@@ -1,5 +1,37 @@
 # Changelog
 
+## v3 — Currency update to November 2026
+
+A pass to bring the whole repository up to date with developments through November 2026, mirrored in full in the Simplified Chinese translation (`11 Chinese translation/`). New facts were limited to dated papers, technical reports and widely-reported releases; claims that rest only on vendor reports or press coverage are explicitly marked "reported" rather than stated as settled fact.
+
+**History and roadmaps**
+- `timeline-2023-present.md` rewritten from a thematic sketch into a dated, technique-focused chronology: GPT-4 and the open-weights wave, Mamba, MLA (DeepSeek-V2), o1 and test-time compute, DeepSeek-V3 (FP8 training, aux-loss-free MoE, MTP), DeepSeek-R1 and the GRPO refinement family, IMO 2025, MuonClip/Kimi K2, MXFP4/NVFP4, hybrid linear-attention and sparse-attention models, diffusion language models, Genie 3, TabPFN v2, Qwen3.5, DeepSeek-V4 (reported), multi-teacher on-policy distillation, ICML 2026, gated releases, Genie 4 (reported).
+- `near-term-outlook.md` re-baselined to November 2026 with a scorecard grading the mid-2026 projections; `long-term-outlook.md` reframes the attention question ("how much attention does a model need?") and moves test-time compute scaling from projection to grounded fact; `open-problems.md` adds 2025-26 status for every problem plus a new dual-use/release-gating entry.
+
+**Architectures and optimizers**
+- State space models: linear attention and Gated DeltaNet explained from first principles; the 2024-2026 hybrid architecture wave (Jamba, Nemotron-H, Qwen3-Next/Qwen3.5, Kimi Linear); adoption assessment revised.
+- Transformer: gated attention and attention sinks, local/global (sliding-window) interleaving, hyper-connections and DeepSeek's mHC.
+- MoE: auxiliary-loss-free load balancing; the ultra-sparse 1T+ parameter trend.
+- Optimizers: Muon at scale — MuonClip/QK-clip (Kimi K2), Muon in DeepSeek-V4 (reported).
+
+**Generative models and training**
+- Diffusion: a full section on diffusion language models (masked discrete diffusion, LLaDA, Mercury, Gemini Diffusion, ICML 2026 outstanding papers).
+- Autoregressive generation: reasoning models make decoding speed the dominant cost.
+- Pretraining: FP8 and NVFP4 4-bit pretraining, multi-token prediction, mid-training, million-token context. Distributed training: expert parallelism and low-precision compute/communication. Data: distilled reasoning traces. Classical ML: TabPFN v2 tabular foundation models.
+
+**Reinforcement learning and post-training**
+- `rl-for-llms.md` substantially rewritten: RLVR, o1, DeepSeek-R1/R1-Zero, GRPO in one equation, DAPO / Dr. GRPO / GSPO, IMO 2025, agentic RL and RL environments, staged pipelines, on-policy and multi-teacher on-policy distillation, a 2026-style post-training pipeline diagram.
+- RLHF/alignment, policy-gradient methods (PPO's LLM-era descendants; A3C's ICML 2026 Test of Time award) and model-based RL (Dreamer 4, Genie 3/4, robot-task rehearsal) updated.
+
+**Inference optimization**
+- KV cache: MLA, DeepSeek Sparse Attention (lightning indexer), DeepSeek-V4's compressed sparse attention (reported), sliding-window interleaving. Quantization: FP8, MXFP4 vs. NVFP4 microscaling, 4-bit training. Speculative decoding: EAGLE-3, MTP drafters. Serving: prefill/decode disaggregation and prefix caching. Distillation: on-policy distillation.
+
+**Synthesis and housekeeping**
+- Comparison tables: new rows (hybrid linear attention, dLLMs, MLA, sparse/compressed attention, FP8/FP4, disaggregated serving), a new LLM post-training table, new cost levers, and a section on inference compute as a scaling axis; decision guide updated (TabPFN branch, Muon, GRPO variants, on-policy distillation, long-context attention options).
+- Taxonomy map extended with the new nodes and two new cross-cutting relationships. README descriptions and currency note updated.
+- Glossary grew from 105 to 147 terms, alphabetized, with a new "N" section; several existing entries updated (Muon, GRPO, test-time compute, world model).
+- Chinese translation: every changed English file is mirrored. Many touched Chinese files that were previously low-quality machine translation were re-translated in full (timeline, roadmaps, comparison tables, RL files, state space models, MoE, and others); the Chinese taxonomy mindmap's lost indentation and the glossary's garbled letter table were fixed.
+
 ## v2 — Opus review-and-expand pass
 
 A full second pass over every content file to correct any technical imprecision, deepen explanations, and make the material more understandable. Total content grew from ~69,600 to ~78,000+ words, and hand-drawn visuals were added throughout — not as padding, but to make the hardest-to-picture mechanisms concrete.
