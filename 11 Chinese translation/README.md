@@ -4,6 +4,8 @@
 
 **时效性：** 最后更新于 **2026 年 11 月**（v3 更新——见 [CHANGELOG.md](CHANGELOG.md)），涵盖推理模型、混合线性注意力架构、稀疏/压缩注意力、4 位浮点训练与服务、扩散语言模型以及在线策略蒸馏等进展。
 
+**PDF 版本：** 整个中文翻译（README、全部 45 个文档、贡献指南和变更日志）已合并为一个带目录和书签的 PDF：[ML-AI-Algorithm-Knowledge-Base-zh.pdf](ML-AI-Algorithm-Knowledge-Base-zh.pdf)（164 页，生成于 2026 年 11 月 12 日）。
+
 **读者：** 为拥有计算机科学学士学位（扎实的编程、标准 CS 基础知识、本科线性代数/微积分/概率）但没有研究生水平 ML 背景的读者编写。每个文件都在首次使用时定义了 ML 特定的术语和符号。请参阅 [scope-and-methodology.md](docs/00-overview/scope-and-methodology.md) 了解完整的受众校准以及每个条目遵循的每个算法模板。
 
 ## 如何使用此仓库

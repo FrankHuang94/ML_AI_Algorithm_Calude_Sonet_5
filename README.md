@@ -4,6 +4,8 @@ A comprehensive, indexed, markdown-based reference covering the algorithms and t
 
 **Currency:** last updated **November 2026** (v3 update — see [CHANGELOG.md](CHANGELOG.md)), covering developments through reasoning models, hybrid linear-attention architectures, sparse/compressed attention, 4-bit floating-point training and serving, diffusion language models, and on-policy distillation.
 
+**Chinese translation:** a Simplified Chinese version lives in [`11 Chinese translation/`](11%20Chinese%20translation/README.md), also available as a single PDF: [ML-AI-Algorithm-Knowledge-Base-zh.pdf](11%20Chinese%20translation/ML-AI-Algorithm-Knowledge-Base-zh.pdf).
+
 **Audience:** written for a reader with a bachelor's degree in computer science (solid programming, standard CS fundamentals, undergraduate linear algebra/calculus/probability) but no graduate-level ML background. Every file defines ML-specific jargon and notation on first use. See [scope-and-methodology.md](docs/00-overview/scope-and-methodology.md) for the full audience calibration and the per-algorithm template every entry follows.
 
 ## How to use this repository
